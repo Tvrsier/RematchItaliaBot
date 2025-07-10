@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 import info
 
-from lib.bot import RematchItaliaBot
+from app.bot import RematchItaliaBot
 
 load_dotenv()
 

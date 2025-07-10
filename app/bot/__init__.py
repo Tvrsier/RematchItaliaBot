@@ -6,10 +6,10 @@ from pathlib import Path
 from discord.ext.commands import Bot
 from discord import Intents, NoEntryPointError, ExtensionFailed, Activity, ActivityType
 import os
-from lib.logger import logger
+from app.logger import logger
 
 
-COGS_PATH = Path("./lib/cogs")
+COGS_PATH = Path("./app/cogs")
 if not COGS_PATH.exists():
     COGS_PATH.mkdir(parents=True, exist_ok=True)
 
@@ -65,7 +65,7 @@ class RematchItaliaBot(Bot):
             for cog in COGS:
                 try:
                     logger.debug("Loading cog: %s", cog)
-                    self.load_extension(f"lib.cogs.{cog}")
+                    self.load_extension(f"app.cogs.{cog}")
                 except NoEntryPointError as e:
                     logger.error("Ignoring %s (load failed): %s", cog, e, exc_info=True)
                     traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
@@ -88,10 +88,6 @@ class RematchItaliaBot(Bot):
                 await asyncio.sleep(0.5)
             self.__ready__ = True
 
-        if self.cogs_ready.all_ready():
-            logger.info("All cogs are ready!")
-        else:
-            logger.warning("Not all cogs are ready, but proceeding anyway.")
         logger.info("Rematch Italia Bot is ready!")
         await self.change_presence(activity=Activity(type=ActivityType.watching,
                                                      name=f"{len(self.users)} users |"))

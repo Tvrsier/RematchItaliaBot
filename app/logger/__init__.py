@@ -40,7 +40,7 @@ handler = logging.handlers.TimedRotatingFileHandler(
 )
 console = logging.StreamHandler()
 
-fmt = "%(asctime)s - [%(levelname)s] - %(relpath)s.%(classname)s.%(funcName)s: %(message)s {%(lineno)d}"
+fmt = "%(asctime)s - [%(levelname)s] - %(relpath)s.%(classname)s.%(funcName)s(): %(message)s {%(lineno)d}"
 formatter = SmartClassFormatter(fmt)
 
 handler.setFormatter(formatter)
