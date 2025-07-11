@@ -1,6 +1,6 @@
-import datetime
+import asyncio
 
-from discord import Guild
+from discord import Guild, Member
 from discord.ext import commands
 from typing import TYPE_CHECKING
 from app.logger import logger
@@ -16,13 +16,18 @@ class DBInitCog(commands.Cog):
         self.bot = bot
 
     @staticmethod
-    async def register_guild(guild: Guild):
+    async def register_guild(guild: Guild, fetch_members: bool):
         db_guild = await schemes.add_guild(guild)
         if not db_guild:
             logger.error(f"Failed to register guild {guild.id} ({guild.name}) in the database.")
             return
         logger.info(f"Registered guild {guild.id} ({guild.name}) in the database.")
-        async for member in guild.fetch_members(limit=None):
+        members: list[Member]
+        if fetch_members:
+            members = await guild.fetch_members(limit=None).flatten()
+        else:
+            members = guild.members
+        for member in members:
             if member.bot:
                 continue
             member_db, guild_member_db, created = await schemes.add_member(member)
@@ -46,7 +51,17 @@ class DBInitCog(commands.Cog):
     @commands.Cog.listener()
     async def on_guild_join(self, guild: Guild):
         logger.info(f"Bot joined guild {guild.id} ({guild.name}).")
-        await self.register_guild(guild)
+        fetch_members = False
+        await asyncio.sleep(3)
+        cached = len(guild.members)
+        total = guild.member_count
+        logger.debug(f"Guild {guild.name}: cache={cached} / total={total}")
+
+        if cached < total * 0.8:
+            logger.warning(f"Member cache contains only the {int(cached/total*100)}%, members will be fetched")
+            fetch_members = True
+
+        await self.register_guild(guild, fetch_members)
 
     @commands.Cog.listener()
     async def on_ready(self):

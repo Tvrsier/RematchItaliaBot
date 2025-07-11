@@ -4,6 +4,8 @@ from enum import Enum
 from discord import Guild, Member, User
 from tortoise import fields, models
 
+from app.logger import logger
+
 
 class PlatformEnum(str, Enum):
     STEAM = "steam"
@@ -16,7 +18,6 @@ class GuildSchema(models.Model):
     name = fields.CharField(max_length=255, null=True)
     icon_hash = fields.CharField(max_length=255, null=True)
     owner_id = fields.BigIntField(null=True)
-    member_count = fields.IntField(default=0)
     log_chanel_id = fields.BigIntField(null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
 
@@ -81,7 +82,6 @@ async def add_guild(guild: Guild) -> GuildSchema:
             "name": guild.name,
             "icon_has": str(guild.icon.url) if guild.icon else None,
             "owner_id": guild.owner_id if guild.owner_id else None,
-            "member_count": guild.member_count
         }
     )
     if not created and db_guild.name != guild.name:
@@ -115,17 +115,22 @@ async def add_member(member: Member) -> tuple[MemberSchema, GuildMemberSchema | 
     return db_member, guild_member_db, created
 
 
-async def add_guild_member(member: Member) -> GuildMemberSchema:
-    guild_member, created = await GuildMemberSchema.get_or_create(
-        guild_id=member.guild.id,
-        discord_id=member.id,
-        defaults={"joined_at": member.joined_at or None}
-    )
-    if not created:
-        if guild_member.joined_at != member.joined_at:
-            guild_member.joined_at = member.joined_at or None
-            await guild_member.save()
-    return guild_member
+async def add_guild_member(member: Member) -> GuildMemberSchema | None:
+    guild_model = await GuildSchema.get_or_none(guild_id = member.guild.id)
+    member_model = await MemberSchema.get_or_none(discord_id = member.id)
+    if guild_model:
+        guild_member, created = await GuildMemberSchema.get_or_create(
+            guild_id=guild_model,
+            discord_id=member_model,
+            defaults={"joined_at": member.joined_at or None}
+        )
+        if not created:
+            if guild_member.joined_at != member.joined_at:
+                guild_member.joined_at = member.joined_at or None
+                await guild_member.save()
+        return guild_member
+    logger.warn(f"Guild not found for member {member.name}")
+    return None
 
 
 async def member_left(discord_user: User, left_at: datetime.datetime, guild_id: int) -> GuildMemberSchema | None:
