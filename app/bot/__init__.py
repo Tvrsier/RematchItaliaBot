@@ -14,7 +14,7 @@ if not COGS_PATH.exists():
     COGS_PATH.mkdir(parents=True, exist_ok=True)
 
 prefix = "&"
-OWNER_IDS = []
+OWNER_IDS = [int(x) for x in os.getenv("OWNER_IDS", "").split(",") if x]
 COGS = [p.stem for p in COGS_PATH.glob("*.py")]
 
 class Ready:
@@ -36,7 +36,7 @@ class Ready:
 
 class RematchItaliaBot(Bot):
     def __init__(self):
-        intents = Intents.default() | Intents.message_content
+        intents = Intents.default() | Intents.message_content | Intents.members
 
         super().__init__(
             command_prefix=prefix,
@@ -51,6 +51,7 @@ class RematchItaliaBot(Bot):
             raise RuntimeError("API_KEY not found in environment variables. Please set it in your .env file.")
         self.cogs_ready = Ready()
         self.__ready__ = False
+        self.owner_ids = OWNER_IDS
 
     def run(self, version: str):
         self.version = version

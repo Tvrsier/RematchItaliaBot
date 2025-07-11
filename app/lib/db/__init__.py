@@ -1,7 +1,7 @@
 import asyncio
 import atexit
 import signal
-from typing import Coroutine, Any, Sequence
+from typing import Any, Sequence
 
 from tortoise import Tortoise, connections, BaseDBAsyncClient
 
@@ -35,12 +35,8 @@ class DatabaseManager:
 
     def _sync_close(self) -> None:
         try:
-            # Questo crea un nuovo loop SE non c’è uno in esecuzione,
-            # altrimenti usa quello corrente (e fallirà, cadendo in except).
             asyncio.run(self.close())
         except RuntimeError:
-            # Se siamo già dentro un loop in esecuzione (signal handler),
-            # schedula semplicemente la close sul thread loop-safe.
             loop = asyncio.get_event_loop()
             loop.call_soon_threadsafe(asyncio.create_task, self.close())
 
@@ -60,3 +56,4 @@ class DatabaseManager:
 
     async def __aexit__(self, exc_type: Any, exc_value: Any, tb: Any) -> None:
         await self.close()
+
