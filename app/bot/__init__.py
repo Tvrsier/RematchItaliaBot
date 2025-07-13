@@ -3,11 +3,15 @@ import sys
 import traceback
 from pathlib import Path
 
+from click import Context
 from discord.ext.commands import Bot
-from discord import Intents, NoEntryPointError, ExtensionFailed, Activity, ActivityType
+from discord import Intents, NoEntryPointError, ExtensionFailed, Activity, ActivityType, TextChannel, \
+    ApplicationContext, Interaction
 import os
 from app.logger import logger
-from lib.db import DatabaseManager
+from app.lib.db import DatabaseManager
+from app.lib.db.schemes import GuildSchema
+from app.lib.extension_context import RematchContext, RematchApplicationContext
 
 COGS_PATH = Path("./app/cogs")
 if not COGS_PATH.exists():
@@ -43,7 +47,7 @@ class RematchItaliaBot(Bot):
             owner_ids=OWNER_IDS,
             intents=intents
         )
-        models = {"models": ["lib.db.schemes"]}
+        models = {"models": ["app.lib.db.schemes"]}
         self.db = DatabaseManager("sqlite://data/rematch_italia.db", models)
         self.version = None
         # Ora legge il token dal .env
@@ -53,6 +57,7 @@ class RematchItaliaBot(Bot):
         self.cogs_ready = Ready()
         self.__ready__ = False
         self.owner_ids = OWNER_IDS
+        self.before_invoke(self._inject_log_channel)
 
     def run(self, version: str):
         self.version = version
@@ -99,3 +104,27 @@ class RematchItaliaBot(Bot):
         logger.info("Rematch Italia Bot is ready!")
         await self.change_presence(activity=Activity(type=ActivityType.watching,
                                                      name=f"{len(self.users)} users |"))
+
+    async def get_context(self, message, *, cls=RematchContext):
+        """Override to inject log channel into context."""
+        ctx = await super().get_context(message, cls=cls)
+        return ctx
+
+    async def get_application_context(
+            self, interaction: Interaction, cls=RematchApplicationContext
+    ):
+        ctx = await super().get_application_context(interaction, cls=cls)
+        await self._inject_log_channel(ctx)
+        return ctx
+
+    async def _inject_log_channel(self, ctx: Context | ApplicationContext): # ignore[no-self-use]
+        """Injects the log channel into the context if it exists."""
+        if ctx.guild:
+            db_guild = await GuildSchema.get_or_none(guild_id=ctx.guild.id)
+            if db_guild and db_guild.log_chanel_id:
+                ctx.log_channel = ctx.guild.get_channel(db_guild.log_chanel_id)
+            else:
+                ctx.log_channel = None
+        else:
+            ctx.log_channel = None
+

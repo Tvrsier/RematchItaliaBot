@@ -1,7 +1,7 @@
 import datetime
 from enum import Enum
 
-from discord import Guild, Member, User
+from discord import Guild, Member, User, TextChannel
 from tortoise import fields, models
 
 from app.logger import logger
@@ -222,3 +222,13 @@ async def remove_command_permission(
     else:
         logger.warning(f"No command permission {command} for role {role_id} found in guild {guild.name}")
         return False
+
+async def set_guild_log_channel(guild: Guild, channel: TextChannel) -> bool:
+    db_guild = await GuildSchema.get_or_none(guild_id=guild.id)
+    if not db_guild:
+        logger.error("Guild not found in database, cannot set log channel.")
+        return False
+    db_guild.log_chanel_id = channel.id
+    await db_guild.save()
+    logger.debug(f"Log channel set to {channel.name} for guild {guild.name}")
+    return True
