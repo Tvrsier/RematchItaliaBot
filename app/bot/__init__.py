@@ -48,7 +48,6 @@ class RematchItaliaBot(Bot):
         models = {"models": ["app.lib.db.schemes"]}
         self.db = DatabaseManager("sqlite://data/rematch_italia.db", models)
         self.version = None
-        # Ora legge il token dal .env
         self.token = os.getenv("API_KEY")
         if not self.token:
             raise RuntimeError("API_KEY not found in environment variables. Please set it in your .env file.")
@@ -115,7 +114,8 @@ class RematchItaliaBot(Bot):
         ctx = await super().get_application_context(interaction, cls=cls)
         return ctx
 
-    async def _inject_log_channel(self, ctx: Context | ApplicationContext): # ignore[no-self-use]
+    # noinspection PyMethodMayBeStatic
+    async def _inject_log_channel(self, ctx: Context | ApplicationContext) -> None:
         """Injects the log channel into the context if it exists."""
         if ctx.guild:
             db_guild = await GuildSchema.get_or_none(guild_id=ctx.guild.id)
@@ -126,7 +126,8 @@ class RematchItaliaBot(Bot):
         else:
             ctx.log_channel = None
 
-    async def _auto_log(self, ctx: Context | ApplicationContext):
+    # noinspection PyMethodMayBeStatic
+    async def _auto_log(self, ctx: Context | ApplicationContext) -> None:
         """Automatically logs the command usage to the log channel."""
         await ctx.send_log()
 

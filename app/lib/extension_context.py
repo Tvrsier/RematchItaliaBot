@@ -8,7 +8,7 @@ from discord import TextChannel, ApplicationContext, Colour, Embed
 class RematchContext(Context):
     log_channel: Optional[TextChannel]
 
-    async def send_log(self, message: str):
+    async def send_log(self):
         if self.log_channel:
             if hasattr(self, 'log_message'):
                 embed = Embed(
