@@ -87,13 +87,15 @@ class RematchItaliaBot(Bot):
     async def on_connect(self):
         await self.db.connect()
         logger.info("Connected to the database.")
+        if self.auto_sync_commands:
+            await self.sync_commands()
+        logger.info(f"Bot {self.user} connected to Discord.")
 
     async def on_ready(self):
         if not self.__ready__:
             while not self.cogs_ready.all_ready():
                 await asyncio.sleep(0.5)
             self.__ready__ = True
-        await self.sync_commands(force=True)
         logger.info("Rematch Italia Bot is ready!")
         await self.change_presence(activity=Activity(type=ActivityType.watching,
                                                      name=f"{len(self.users)} users |"))
