@@ -3,15 +3,13 @@ import sys
 import traceback
 from pathlib import Path
 
-from click import Context
 from discord.ext.commands import Bot
-from discord import Intents, NoEntryPointError, ExtensionFailed, Activity, ActivityType, TextChannel, \
-    ApplicationContext, Interaction
+from discord import Intents, NoEntryPointError, ExtensionFailed, Activity, ActivityType, Interaction
 import os
 from app.logger import logger
 from app.lib.db import DatabaseManager
 from app.lib.db.schemes import GuildSchema
-from app.lib.extension_context import RematchContext, RematchApplicationContext
+from app.lib.extension_context import RematchContext as Context, RematchApplicationContext as ApplicationContext
 
 COGS_PATH = Path("./app/cogs")
 if not COGS_PATH.exists():
@@ -58,6 +56,7 @@ class RematchItaliaBot(Bot):
         self.__ready__ = False
         self.owner_ids = OWNER_IDS
         self.before_invoke(self._inject_log_channel)
+        self.after_invoke(self._auto_log)
 
     def run(self, version: str):
         self.version = version
@@ -105,16 +104,15 @@ class RematchItaliaBot(Bot):
         await self.change_presence(activity=Activity(type=ActivityType.watching,
                                                      name=f"{len(self.users)} users |"))
 
-    async def get_context(self, message, *, cls=RematchContext):
+    async def get_context(self, message, *, cls=Context):
         """Override to inject log channel into context."""
         ctx = await super().get_context(message, cls=cls)
         return ctx
 
     async def get_application_context(
-            self, interaction: Interaction, cls=RematchApplicationContext
+            self, interaction: Interaction, cls=ApplicationContext
     ):
         ctx = await super().get_application_context(interaction, cls=cls)
-        await self._inject_log_channel(ctx)
         return ctx
 
     async def _inject_log_channel(self, ctx: Context | ApplicationContext): # ignore[no-self-use]
@@ -127,4 +125,8 @@ class RematchItaliaBot(Bot):
                 ctx.log_channel = None
         else:
             ctx.log_channel = None
+
+    async def _auto_log(self, ctx: Context | ApplicationContext):
+        """Automatically logs the command usage to the log channel."""
+        await ctx.send_log()
 

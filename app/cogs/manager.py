@@ -45,13 +45,15 @@ class Manager(commands.Cog):
         if command_permission:
             await actx.respond(f"✅ Permesso aggiunto per il comando `{command_enum.name}` al ruolo `{role.name}`.",
                                ephemeral=True)
-            await actx.send_log(f"{actx.author.mention} gave role `{role.name}` "
-                                f"permission for command {command_enum.name}.", color=Colour.green())
+            actx.log_message = f"{actx.author.mention} gave role `{role.name}` " \
+                                f"permission for command {command_enum.name}."
+            actx.color = Colour.green()
         else:
             await actx.respond(f"❌ Errore nell'aggiunta del permesso per il comando `{command_enum.name}` al ruolo "
                                f"`{role.name}`.", epheral=True)
-            await actx.send_log(f"{actx.author.mention} failed to give permission {command_enum.name} "
-                                f"to `{role.name}`", color=Colour.red())
+            actx.log_message = f"{actx.author.mention} failed to give permission {command_enum.name} " \
+                                f"to `{role.name}`"
+            actx.color = Colour.red()
 
 
 
@@ -77,13 +79,15 @@ class Manager(commands.Cog):
         if success:
             await actx.respond(f"✅ Permesso rimosso per il comando `{command_enum.name}` dal ruolo `{role.name}`.",
                                ephemeral=True)
-            await actx.send_log(f"{actx.author.mention} removed role `{role.name}` "
-                                f"permission for command {command_enum.name}.", color=Colour.green())
+            actx.log_message = f"{actx.author.mention} removed role `{role.name}` " \
+                                f"permission for command {command_enum.name}."
+            actx.color = Colour.green()
         else:
             await actx.respond(f"❌ Errore nella rimozione del permesso per il comando `{command_enum.name}` dal ruolo "
                                f"`{role.name}`.", ephemeral=True)
-            await actx.send_log(f"{actx.author.mention} failed to give permission {command_enum.name} "
-                                f"to `{role.name}`", color=Colour.red())
+            actx.log_message = f"{actx.author.mention} failed to remove permission {command_enum.name} " \
+                                f"from `{role.name}`"
+            actx.color = Colour.red()
 
     @slash_command(
         name="log_channel",
