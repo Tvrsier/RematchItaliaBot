@@ -75,19 +75,19 @@ class GuildMemberSchema(models.Model):
 
 
 
-async def add_guild(guild: Guild) -> GuildSchema:
+async def add_guild(guild: Guild) -> tuple[GuildSchema, bool]:
     db_guild, created = await GuildSchema.get_or_create(
         guild_id=guild.id,
         defaults={
             "name": guild.name,
-            "icon_has": str(guild.icon.url) if guild.icon else None,
+            "icon_hash": str(guild.icon.url) if guild.icon else None,
             "owner_id": guild.owner_id if guild.owner_id else None,
         }
     )
     if not created and db_guild.name != guild.name:
         db_guild.name = guild.name
         await db_guild.save()
-    return db_guild
+    return db_guild, created
 
 
 async def add_member(member: Member) -> tuple[MemberSchema, GuildMemberSchema | None, bool]:

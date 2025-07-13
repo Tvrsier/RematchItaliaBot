@@ -7,13 +7,13 @@ from discord.ext.commands import Bot
 from discord import Intents, NoEntryPointError, ExtensionFailed, Activity, ActivityType
 import os
 from app.logger import logger
-
+from lib.db import DatabaseManager
 
 COGS_PATH = Path("./app/cogs")
 if not COGS_PATH.exists():
     COGS_PATH.mkdir(parents=True, exist_ok=True)
 
-prefix = "&"
+prefix = "rmi&"
 OWNER_IDS = [int(x) for x in os.getenv("OWNER_IDS", "").split(",") if x]
 COGS = [p.stem for p in COGS_PATH.glob("*.py")]
 
@@ -43,7 +43,8 @@ class RematchItaliaBot(Bot):
             owner_ids=OWNER_IDS,
             intents=intents
         )
-
+        models = {"models": ["lib.db.schemes"]}
+        self.db = DatabaseManager("sqlite://data/rematch_italia.db", models)
         self.version = None
         # Ora legge il token dal .env
         self.token = os.getenv("API_KEY")
@@ -83,12 +84,15 @@ class RematchItaliaBot(Bot):
             logger.warning("No cogs found to load, assuming all are ready.")
             self.__ready__=True
 
+    async def on_connect(self):
+        await self.db.connect()
+        logger.info("Connected to the database.")
+
     async def on_ready(self):
         if not self.__ready__:
             while not self.cogs_ready.all_ready():
                 await asyncio.sleep(0.5)
             self.__ready__ = True
-
         logger.info("Rematch Italia Bot is ready!")
         await self.change_presence(activity=Activity(type=ActivityType.watching,
                                                      name=f"{len(self.users)} users |"))

@@ -17,11 +17,12 @@ class DBInitCog(commands.Cog):
 
     @staticmethod
     async def register_guild(guild: Guild, fetch_members: bool):
-        db_guild = await schemes.add_guild(guild)
+        db_guild, created = await schemes.add_guild(guild)
         if not db_guild:
             logger.error(f"Failed to register guild {guild.id} ({guild.name}) in the database.")
             return
-        logger.info(f"Registered guild {guild.id} ({guild.name}) in the database.")
+        if created:
+            logger.info(f"Registered guild {guild.id} ({guild.name}) in the database.")
         members: list[Member]
         if fetch_members:
             members = await guild.fetch_members(limit=None).flatten()
@@ -41,12 +42,18 @@ class DBInitCog(commands.Cog):
     @commands.is_owner()
     async def sync_guild(self, ctx: commands.Context):
         await ctx.trigger_typing()
+        await ctx.message.delete()
         try:
-            await self.register_guild(ctx.guild)
-            await ctx.reply(f"✅ Guild **{ctx.guild.name}** sincronizzata con successo.")
+            cached = len(ctx.guild.members)
+            total = ctx.guild.member_count
+            logger.debug(f"Guild {ctx.guild.name}: cache={cached} / total={total}")
+
+            fetch_members = self.check_fetch_members(cached, total)
+            await self.register_guild(ctx.guild, fetch_members)
+            await ctx.send("✅ Sincronizzazione della guild completata con successo!")
         except Exception as e:
-            logger.exception("Errore durante sync_guild", exc_info=e, stack_info=True)
-            await ctx.reply(f"❌ Errore durante la sincronizzazione della guild: {e}")
+            logger.exception("Error in sync_guild", exc_info=e, stack_info=True)
+            await ctx.send("❌ Si è verificato un errore durante la sincronizzazione della guild.")
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild: Guild):
@@ -57,9 +64,7 @@ class DBInitCog(commands.Cog):
         total = guild.member_count
         logger.debug(f"Guild {guild.name}: cache={cached} / total={total}")
 
-        if cached < total * 0.8:
-            logger.warning(f"Member cache contains only the {int(cached/total*100)}%, members will be fetched")
-            fetch_members = True
+        fetch_members = self.check_fetch_members(cached, total)
 
         await self.register_guild(guild, fetch_members)
 
@@ -67,6 +72,13 @@ class DBInitCog(commands.Cog):
     async def on_ready(self):
         if not self.bot.__ready__:
             self.bot.cogs_ready.ready_up("db_init_cog")
+
+    @staticmethod
+    def check_fetch_members(cached, total) -> bool:
+        if cached < total * 0.8:
+            logger.warning(f"Member cache contains only the {int(cached/total*100)}%, members will be fetched")
+            return True
+        return False
 
 
 def setup(bot: "RematchItaliaBot"):

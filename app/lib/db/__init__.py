@@ -4,6 +4,7 @@ import signal
 from typing import Any, Sequence
 
 from tortoise import Tortoise, connections, BaseDBAsyncClient
+from app.logger import logger
 
 
 class DatabaseManager:
@@ -24,6 +25,7 @@ class DatabaseManager:
                 db_url=self.db_url,
                 modules=self.modules
             )
+            logger.debug("Database connection initialized with URL: %s", self.db_url)
             if self.generate_schemas:
                 await Tortoise.generate_schemas()
             DatabaseManager._initialized = True
@@ -35,10 +37,13 @@ class DatabaseManager:
 
     def _sync_close(self) -> None:
         try:
-            asyncio.run(self.close())
-        except RuntimeError:
             loop = asyncio.get_event_loop()
-            loop.call_soon_threadsafe(asyncio.create_task, self.close())
+            if loop.is_running():
+                asyncio.ensure_future(self.close())
+            else:
+                loop.run_until_complete(self.close())
+        except RuntimeError:
+            asyncio.run(self.close())
 
     @property
     def connection(self) -> BaseDBAsyncClient:
