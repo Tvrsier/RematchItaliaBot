@@ -17,7 +17,7 @@ class DBInitCog(commands.Cog):
 
     @staticmethod
     async def register_guild(guild: Guild, fetch_members: bool):
-        db_guild, created = await schemes.add_guild(guild)
+        db_guild, created = await schemes.add_or_get_guild(guild)
         if not db_guild:
             logger.error(f"Failed to register guild {guild.id} ({guild.name}) in the database.")
             return
@@ -31,7 +31,7 @@ class DBInitCog(commands.Cog):
         for member in members:
             if member.bot:
                 continue
-            member_db, guild_member_db, created = await schemes.add_member(member)
+            member_db, guild_member_db, created = await schemes.add_or_get_member(member)
             if not member_db:
                 logger.error(f"Failed to register member {member.id} ({member.name}) in the database.")
                 continue

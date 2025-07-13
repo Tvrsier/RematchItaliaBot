@@ -13,6 +13,11 @@ class PlatformEnum(str, Enum):
     XBOX = "xbox"
 
 
+class CommandEnum(str, Enum):
+    SYNC_GUILD = "sync_guild"
+
+
+
 class GuildSchema(models.Model):
     guild_id = fields.BigIntField(primary_key=True, unique=True)
     name = fields.CharField(max_length=255, null=True)
@@ -74,8 +79,20 @@ class GuildMemberSchema(models.Model):
         unique_together = (("guild_id", "discord_id"),)
 
 
+class CommandPermissionSchema(models.Model):
+    id = fields.IntField(primary_key=True, unique=True)
+    guild_id = fields.ForeignKeyField("models.GuildSchema", related_name="command_permissions",
+                                      on_delete=fields.CASCADE, null=False)
+    command = fields.CharEnumField(CommandEnum, null=False, max_length=50)
+    role_id = fields.BigIntField(null=False)
 
-async def add_guild(guild: Guild) -> tuple[GuildSchema, bool]:
+    class Meta:
+        table="command_permission"
+        unique_together = (("guild_id", "command", "role_id"),)
+
+
+
+async def add_or_get_guild(guild: Guild) -> tuple[GuildSchema, bool]:
     db_guild, created = await GuildSchema.get_or_create(
         guild_id=guild.id,
         defaults={
@@ -90,7 +107,7 @@ async def add_guild(guild: Guild) -> tuple[GuildSchema, bool]:
     return db_guild, created
 
 
-async def add_member(member: Member) -> tuple[MemberSchema, GuildMemberSchema | None, bool]:
+async def add_or_get_member(member: Member) -> tuple[MemberSchema, GuildMemberSchema | None, bool]:
     guild_member_db = None
     db_member, created = await MemberSchema.get_or_create(
         discord_id=member.id,
@@ -111,11 +128,11 @@ async def add_member(member: Member) -> tuple[MemberSchema, GuildMemberSchema | 
             db_member.updated_at = datetime.datetime.now(datetime.UTC)
             await db_member.save()
     if created:
-        guild_member_db = await add_guild_member(member)
+        guild_member_db = await add_or_get_guild_member(member)
     return db_member, guild_member_db, created
 
 
-async def add_guild_member(member: Member) -> GuildMemberSchema | None:
+async def add_or_get_guild_member(member: Member) -> GuildMemberSchema | None:
     guild_model = await GuildSchema.get_or_none(guild_id = member.guild.id)
     member_model = await MemberSchema.get_or_none(discord_id = member.id)
     if guild_model:
@@ -144,3 +161,64 @@ async def member_left(discord_user: User, left_at: datetime.datetime, guild_id: 
 
     return guild_member
 
+
+async def add_command_permission(
+        guild: Guild, command: CommandEnum, role_id: int
+) -> tuple[CommandPermissionSchema | None, bool | None]:
+    db_guild = await GuildSchema.get_or_none(guild_id = guild.id)
+    if not db_guild:
+        logger.error("Guild not found in database, cannot add permission.")
+        return None, None
+    permission, created = await CommandPermissionSchema.get_or_create(
+        guild_id = db_guild,
+        command = command,
+        role_id = role_id
+    )
+    if created:
+        logger.info(f"Command permission {command} for role {role_id} added to guild {guild.name}")
+        return permission, created
+    else:
+        logger.info(f"Command permission {command} for role {role_id} already exists in guild {guild.name}")
+        return permission, None
+
+
+async def get_command_permission(guild: Guild, command: CommandEnum) -> list[CommandPermissionSchema]:
+    db_guild = await GuildSchema.get_or_none(guild_id=guild.id)
+    if not db_guild:
+        logger.error("Guild not found in database, cannot retrieve permissions.")
+        return []
+    permissions = await CommandPermissionSchema.filter(
+        guild_id=db_guild,
+        command=command
+    ).all()
+    return permissions
+
+async def get_command_permissions(guild: Guild) -> list[CommandPermissionSchema]:
+    db_guild = await GuildSchema.get_or_none(guild_id=guild.id)
+    if not db_guild:
+        logger.error("Guild not found in database, cannot retrieve permissions.")
+        return []
+    permissions = await CommandPermissionSchema.filter(
+        guild_id=db_guild
+    ).all()
+    return permissions
+
+async def remove_command_permission(
+        guild: Guild, command: CommandEnum, role_id: int
+) -> bool:
+    db_guild = await GuildSchema.get_or_none(guild_id=guild.id)
+    if not db_guild:
+        logger.error("Guild not found in database, cannot remove permission.")
+        return False
+    permission = await CommandPermissionSchema.filter(
+        guild_id=db_guild,
+        command=command,
+        role_id=role_id
+    ).first()
+    if permission:
+        await permission.delete()
+        logger.info(f"Command permission {command} for role {role_id} removed from guild {guild.name}")
+        return True
+    else:
+        logger.warning(f"No command permission {command} for role {role_id} found in guild {guild.name}")
+        return False

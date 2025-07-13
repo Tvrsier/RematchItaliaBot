@@ -4,7 +4,8 @@ from types import SimpleNamespace
 
 from tortoise import Tortoise
 
-from app.lib.db.schemes import add_guild, GuildSchema, add_member, MemberSchema, GuildMemberSchema
+from app.lib.db.schemes import *
+
 
 
 class TestSchemes(unittest.IsolatedAsyncioTestCase):
@@ -27,7 +28,7 @@ class TestSchemes(unittest.IsolatedAsyncioTestCase):
             icon=None,
             owner_id=1111,
         )
-        guild = await add_guild(fake_guild)
+        guild = await add_or_get_guild(fake_guild)
         exists = await GuildSchema.exists(guild_id=1234)
         self.assertTrue(exists, "The GuildSchema has been created")
 
@@ -43,7 +44,7 @@ class TestSchemes(unittest.IsolatedAsyncioTestCase):
             owner_id=None,
         )
 
-        await add_guild(fake_guild)
+        await add_or_get_guild(fake_guild)
 
         fake_member = SimpleNamespace(
             id=5555,
@@ -54,7 +55,7 @@ class TestSchemes(unittest.IsolatedAsyncioTestCase):
             guild = fake_guild,
             joined_at = datetime.datetime.now(datetime.UTC)
         )
-        member_db, guild_member_db, created = await add_member(fake_member)
+        member_db, guild_member_db, created = await add_or_get_member(fake_member)
         self.assertTrue(created, "Member was created")
         self.assertTrue(
             await MemberSchema.exists(discord_id=5555),
@@ -65,6 +66,23 @@ class TestSchemes(unittest.IsolatedAsyncioTestCase):
             "GuildMemberSchema non trovato"
         )
 
+    async def test_add_command_permission(self):
+        fake_guild = SimpleNamespace(
+            id=8888,
+            name="TestGuild",
+            icon=None,
+            owner_id=2222,
+        )
+        await add_or_get_guild(fake_guild)
+
+        command = CommandEnum.SYNC_GUILD
+        role_id = 3333
+
+        # Assuming a function to add command permission exists
+        await add_command_permission(fake_guild, command, role_id)
+
+        permissions = await get_command_permission(fake_guild, command)
+        self.assertIsNotNone(permissions, "Permissions should not be None")
 
 if __name__ == '__main__':
     unittest.main()

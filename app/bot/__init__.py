@@ -93,6 +93,7 @@ class RematchItaliaBot(Bot):
             while not self.cogs_ready.all_ready():
                 await asyncio.sleep(0.5)
             self.__ready__ = True
+        await self.sync_commands(force=True)
         logger.info("Rematch Italia Bot is ready!")
         await self.change_presence(activity=Activity(type=ActivityType.watching,
                                                      name=f"{len(self.users)} users |"))

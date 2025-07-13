@@ -62,3 +62,13 @@ class DatabaseManager:
     async def __aexit__(self, exc_type: Any, exc_value: Any, tb: Any) -> None:
         await self.close()
 
+
+if __name__ == "__main__":
+    # Create tables
+    db_path = "sqlite://data/rematch_italia.db"
+    modules = {"models": ["schemes"]}
+    db_manager = DatabaseManager(db_url=db_path, modules=modules, generate_schemas=True)
+    asyncio.run(db_manager.connect())
+    logger.info("Database initialized and schemas generated.")
+    asyncio.run(db_manager.close())
+
