@@ -1,6 +1,6 @@
 from discord.ext import commands
 from app.logger import logger
-from app.lib.db.schemes import CommandEnum, get_command_permission
+from app.lib.db.queries import CommandEnum, get_command_permission
 
 def require_role(command: CommandEnum):
     async def predicate(ctx: commands.Context):

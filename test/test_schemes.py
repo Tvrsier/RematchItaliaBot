@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 from tortoise import Tortoise
 
-from app.lib.db.schemes import *
+from app.lib.db.queries import *
 
 
 
@@ -83,6 +83,26 @@ class TestSchemes(unittest.IsolatedAsyncioTestCase):
 
         permissions = await get_command_permission(fake_guild, command)
         self.assertIsNotNone(permissions, "Permissions should not be None")
+
+    async def test_add_rank_link(self):
+        fake_guild = SimpleNamespace(
+            id=8888,
+            name="TestGuild",
+            icon=None,
+            owner_id=2222,
+        )
+        await add_or_get_guild(fake_guild)
+        rank = RankLinkEnum.ORO
+        fake_role = SimpleNamespace(
+            id=4444,
+            name="TestRole"
+        )
+        rank_db, created = await link_rank(fake_guild, fake_role, rank)
+        self.assertTrue(created, "Rank link should be created")
+        self.assertTrue(
+            await Rank.exists(guild_id=8888, name=rank.name, role_id=4444),
+            "RankLinkSchema not found"
+        )
 
 if __name__ == '__main__':
     unittest.main()

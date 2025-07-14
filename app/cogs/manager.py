@@ -2,9 +2,11 @@ from discord import SlashCommandGroup, Option, Role, slash_command, TextChannel,
 from discord.ext import commands
 from typing import TYPE_CHECKING
 from app.logger import logger
-from app.lib.db.schemes import CommandEnum, add_command_permission, remove_command_permission, set_guild_log_channel
+from app.lib.db.queries import CommandEnum, add_command_permission, remove_command_permission, set_guild_log_channel
 from discord import OptionChoice
 from app.lib.extension_context import RematchApplicationContext as ApplicationContext
+from app.checks import require_role
+from app.views import RankLinkView
 
 if TYPE_CHECKING:
     from app.bot import RematchItaliaBot
@@ -20,6 +22,12 @@ class Manager(commands.Cog):
     perms = SlashCommandGroup(
         name="perm",
         description="Gestione dei permessi per i comandi.",
+        guild_ids=[996755561829912586]
+    )
+
+    rank = SlashCommandGroup(
+        name="rank",
+        description="Gestione del rank system.",
         guild_ids=[996755561829912586]
     )
 
@@ -110,6 +118,22 @@ class Manager(commands.Cog):
             await actx.respond(f"✅ Canale di log impostato su {channel.mention}.", ephemeral=True)
         else:
             await actx.respond("❌ Errore nell'impostazione del canale di log.", ephemeral=True)
+
+    @rank.command(
+        name="link",
+        description="Collega i ruoli ai rank."
+    )
+    @commands.guild_only()
+    @commands.check_any(
+        commands.has_guild_permissions(administrator=True),
+        require_role(CommandEnum.RANK_LINK)
+    )
+    async def link_rank(self, actx: ApplicationContext):
+        view = RankLinkView(actx.guild)
+        await actx.respond(
+            f"Associa {view.ranks[0]} -> ?",
+            view=view
+        )
 
     @commands.Cog.listener()
     async def on_ready(self):
