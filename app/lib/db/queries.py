@@ -62,10 +62,18 @@ async def add_or_get_guild_member(member: Member) -> GuildMemberSchema | None:
     return None
 
 
-async def member_left(discord_user: User, left_at: datetime.datetime, guild_id: int) -> GuildMemberSchema | None:
+async def member_left(discord_user: Member, left_at: datetime.datetime, guild_id: int) -> GuildMemberSchema | None:
+    guild_db = await GuildSchema.get_or_none(guild_id=guild_id)
+    if not guild_db:
+        logger.error(f"Guild with ID {guild_id} not found in database.")
+        return None
+    member_db = await MemberSchema.get_or_none(discord_id=discord_user.id)
+    if not member_db:
+        logger.error(f"Member with ID {discord_user.id} not found in database.")
+        return None
     guild_member = await GuildMemberSchema.filter(
-        guild_id=guild_id,
-        discord_id=discord_user.id
+        guild_id=guild_db,
+        discord_id=member_db
     ).first()
     if guild_member:
         guild_member.left_at = left_at
@@ -167,3 +175,20 @@ async def link_rank(guild: Guild, role: Role, rank: RankLinkEnum) -> tuple[Rank 
             rank_link.updated_at = datetime.datetime.now(datetime.UTC)
             await rank_link.save()
     return rank_link, created
+
+async def get_guild(guild: Guild) -> GuildSchema | None:
+    db_guild = await GuildSchema.get_or_none(guild_id=guild.id)
+    if not db_guild:
+        logger.error(f"Guild {guild.name} ({guild.id}) not found in database.")
+        return None
+    return db_guild
+
+
+async def get_member(member: Member) -> MemberSchema | None:
+    db_member = await MemberSchema.get_or_none(discord_id=member.id)
+    if not db_member:
+        logger.error(f"Member {member.name} ({member.id}) not found in database.")
+        return None
+    return db_member
+
+

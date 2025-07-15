@@ -1,9 +1,9 @@
 import discord
-from discord import Guild, ButtonStyle
+from discord import Guild, ButtonStyle, Embed, Colour
 from discord.ui import View, Select, Button
 from typing import Dict
 
-from app.lib.db.schemes import RankLinkEnum, Rank
+from app.lib.db.schemes import RankLinkEnum
 from app.logger import logger
 from lib.db.queries import link_rank
 
@@ -39,6 +39,7 @@ class RoleDropdown(Select):
     async def callback(self, interaction: discord.Interaction):
         rank = self.ranks[self.current]
         raw  = self.values[0]
+        step = self.current + 2
         role = self.guild.get_role(int(raw)) if raw != "none" else None
         self.mapping[rank] = role
         self.current += 1
@@ -53,11 +54,19 @@ class RoleDropdown(Select):
                 current=self.current,
                 mapping=self.mapping
             ))
+            embed = Embed(
+                title="📊 Associa ai Rank i Ruoli del server",
+                description=f"**Rank corrente:** {rank.name}",
+                colour=Colour.blurple()
+            )
+            embed.set_footer(text=f"Rank {step}/{len(self.ranks)}")
             await interaction.response.edit_message(
-                content=f"Associare **{self.ranks[self.current].name}** → ?",
-                view=view
+                content=None,
+                view=view,
+                embed=embed
             )
         else:
+            # noinspection PyTypeChecker
             confirm_btn = Button(label="Conferma", style=ButtonStyle.green)
 
             async def confirm_cb(inter: discord.Interaction):
@@ -71,10 +80,13 @@ class RoleDropdown(Select):
                         )
                         return
                 await inter.response.edit_message(
-                    content="✅ Tutti i rank sono stati collegati correttamente!",
+                    content="✅ Tutti i rank sono stati collegati correttamente!\n"
+                            "Il messaggio si chiuderà tra 5 secondi",
                     view=None
                 )
                 view.stop()
+                original = await inter.original_response()
+                await original.delete(delay=5)
             confirm_btn.callback = confirm_cb
             view.add_item(confirm_btn)
 

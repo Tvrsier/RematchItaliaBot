@@ -1,4 +1,4 @@
-from discord import SlashCommandGroup, Option, Role, slash_command, TextChannel, Colour
+from discord import SlashCommandGroup, Option, Role, slash_command, TextChannel, Colour, Embed
 from discord.ext import commands
 from typing import TYPE_CHECKING
 from app.logger import logger
@@ -7,12 +7,15 @@ from discord import OptionChoice
 from app.lib.extension_context import RematchApplicationContext as ApplicationContext
 from app.checks import require_role
 from app.views import RankLinkView
+from app.lib.db.schemes import RankLinkEnum
+from lib.db.queries import link_rank
 
 if TYPE_CHECKING:
     from app.bot import RematchItaliaBot
 
 
 COMMAND_CHOICES = [OptionChoice(c.name, c.value) for c in CommandEnum]
+RANK_CHOICES = [OptionChoice(r.name, str(r.value)) for r in RankLinkEnum]
 
 
 class Manager(commands.Cog):
@@ -128,12 +131,50 @@ class Manager(commands.Cog):
         commands.has_guild_permissions(administrator=True),
         require_role(CommandEnum.RANK_LINK)
     )
-    async def link_rank(self, actx: ApplicationContext):
-        view = RankLinkView(actx.guild)
-        await actx.respond(
-            f"Associa {view.ranks[0]} -> ?",
-            view=view
-        )
+    async def link_rank(
+            self,
+            actx: ApplicationContext,
+            rank: Option(
+                str,
+                "Seleziona il rank da associare",
+                required=False,
+                choices=RANK_CHOICES
+            ) = None,
+            role: Option(
+                Role,
+                "Ruolo da associare al rank",
+                required=False
+            ) = None
+    ):
+        if rank is None and role is None:
+            view = RankLinkView(actx.guild)
+            embed = Embed(
+                title="📊 Associa ai Rank i Ruoli del server",
+                description="Clicca sui pulsanti per associare i ruoli ai rank.\n"
+                            f"**Rank corrente:** {view.ranks[0].name}",
+                colour=Colour.blurple()
+            )
+            embed.set_footer(text=f"Rank 1/{len(view.ranks)}")
+            await actx.respond(
+                content=None,
+                view=view,
+                embed=embed
+            )
+            return
+        if (rank is None) ^ (role is None):
+            await actx.respond("❌ Devi specificare sia il rank che il ruolo da associare.", ephemeral=True)
+            return
+
+        rank_enum = RankLinkEnum(int(rank))
+        success, created = await link_rank(actx.guild, role, rank_enum)
+        if success:
+            verb = "collegato" if created else "aggiornato"
+            await actx.respond(f"✅ Ruolo `{role.name}` {verb} al rank `{rank_enum.name}`.", ephemeral=True)
+        else:
+            await actx.respond(f"❌ Errore nel collegamento del ruolo `{role.name}` al rank `{rank_enum.name}`.",
+                               ephemeral=True)
+
+
 
     @commands.Cog.listener()
     async def on_ready(self):

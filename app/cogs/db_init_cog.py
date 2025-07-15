@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 
 from discord import Guild, Member
 from discord.ext import commands
@@ -67,6 +68,37 @@ class DBInitCog(commands.Cog):
         fetch_members = self.check_fetch_members(cached, total)
 
         await self.register_guild(guild, fetch_members)
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member: Member):
+        if member.bot:
+            return
+        logger.info("Member joined: %s (%s)", member.id, member.name)
+        db_guild = await queries.add_or_get_guild(member.guild)
+        if not db_guild:
+            logger.error(f"Failed to register guild {member.guild.id} ({member.guild.name}) in the database.")
+            return
+        member_db, guild_member_db, created = await queries.add_or_get_member(member)
+        if not member_db:
+            logger.error(f"Failed to register member {member.id} ({member.name}) in the database.")
+            return
+        if created:
+            logger.info(f"Registered member {member.id} ({member.name}) in the database.")
+
+    @commands.Cog.listener()
+    async def on_member_remove(self, member: Member):
+        if member.bot:
+            return
+        logger.info("Member left: %s (%s)", member.id, member.name)
+        member_db = await queries.get_member(member)
+        if not member_db:
+            logger.error(f"Member {member.id} ({member.name}) not found in the database.")
+            return
+        guild_member = await queries.member_left(member, datetime.datetime.now(datetime.UTC), member.guild.id)
+        if not guild_member:
+            logger.error(f"Failed to update member {member.id} ({member.name}) in the database.")
+            return
+        logger.info(f"Updated member {member.id} ({member.name}) in the database as left.")
 
     @commands.Cog.listener()
     async def on_ready(self):
