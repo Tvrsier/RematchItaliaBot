@@ -173,6 +173,8 @@ class Manager(commands.Cog):
         else:
             await actx.respond(f"❌ Errore nel collegamento del ruolo `{role.name}` al rank `{rank_enum.name}`.",
                                ephemeral=True)
+        actx.log_message = f"{actx.author.mention} used command `/rank link`"
+        actx.log_color = Colour.green() if success else Colour.red()
 
 
 
