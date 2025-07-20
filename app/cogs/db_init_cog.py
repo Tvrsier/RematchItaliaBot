@@ -112,6 +112,24 @@ class DBInitCog(commands.Cog):
             return True
         return False
 
+    @commands.Cog.listener()
+    async def on_member_update(self, before: Member, after: Member):
+        if before.bot:
+            return
+        if before.discriminator != after.discriminator:
+            logger.info("Member nickname changed: %s (%s) -> %s", before.id, before.name, after.nick)
+            member_db = await queries.get_member(before)
+            if not member_db:
+                logger.error(f"Member {before.id} ({before.name}) not found in the database.")
+                member_db = await queries.add_or_get_member(after)
+            else:
+                member_db.discriminator = after.discriminator
+                member_db.avatar_hash = after.avatar
+                member_db.updated_at = datetime.datetime.now(datetime.UTC)
+                await member_db.save()
+
+
+
 
 def setup(bot: "RematchItaliaBot"):
     bot.add_cog(DBInitCog(bot))

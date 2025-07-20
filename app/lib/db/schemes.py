@@ -1,6 +1,8 @@
 from enum import Enum, IntEnum
 from tortoise import fields, models
 
+from typing import TYPE_CHECKING
+
 
 class PlatformEnum(str, Enum):
     STEAM = "steam"
@@ -11,6 +13,8 @@ class PlatformEnum(str, Enum):
 class CommandEnum(str, Enum):
     SYNC_GUILD = "sync_guild"
     RANK_LINK = "rank_link"
+    REMATCH_FORM = "rematch_form"
+    LOAD_PERSISTENT_VIEW = "load_persistent_view"
 
 
 class RankLinkEnum(IntEnum):
@@ -22,6 +26,10 @@ class RankLinkEnum(IntEnum):
     ESPERTO = 5
     ELITE = 6
 
+
+class PersistentViewEnum(str, Enum):
+    RANK_LINK = "rank_link"
+    REMATCH_FORM = "rematch_form"
 
 
 class GuildSchema(models.Model):
@@ -95,3 +103,12 @@ class CommandPermissionSchema(models.Model):
     class Meta:
         table="command_permission"
         unique_together = (("guild_id", "command", "role_id"),)
+
+
+class PersistentViews(models.Model):
+    id = fields.IntField(primary_key=True, unique=True)
+    view_name = fields.CharEnumField(PersistentViewEnum, null=False, max_length=50)
+    guild_id = fields.ForeignKeyField("models.GuildSchema", related_name="persistent_views",
+                                      on_delete=fields.CASCADE, null=False)
+    channel_id = fields.BigIntField(null=False)
+    message_id = fields.BigIntField(null=False)

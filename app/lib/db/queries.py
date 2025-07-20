@@ -1,4 +1,4 @@
-from discord import Role, Guild, Member, TextChannel, User
+from discord import Role, Guild, Member, TextChannel, User, Message
 import datetime
 
 from app.logger import logger
@@ -190,5 +190,43 @@ async def get_member(member: Member) -> MemberSchema | None:
         logger.error(f"Member {member.name} ({member.id}) not found in database.")
         return None
     return db_member
+
+
+async def create_persistent_view(
+    view_name: PersistentViewEnum, guild: Guild, channel: TextChannel, message: Message
+) -> PersistentViews:
+    guild_db = await GuildSchema.get_or_none(guild_id=guild.id)
+    persistent_view, created = await PersistentViews.get_or_create(
+        view_name=view_name,
+        guild_id = guild_db,
+        channel_id = channel.id,
+        message_id = message.id
+    )
+    if not created:
+        persistent_view.message_id = message.id
+        await persistent_view.save()
+    return persistent_view
+
+async def get_persistent_views(view_name: PersistentViewEnum) -> list[PersistentViews] | None:
+    views = await PersistentViews.filter(view_name=view_name).prefetch_related("guild_id").all()
+    if not views:
+        logger.debug(f"No persistent views found for {view_name.name}.")
+        return None
+    return views
+
+async def remove_persistent_view(
+    view_name: PersistentViewEnum, message_id: int
+) -> bool:
+    persistent_view = await PersistentViews.filter(
+        view_name=view_name,
+        message_id=message_id
+    ).first()
+    if persistent_view:
+        await persistent_view.delete()
+        logger.info(f"Persistent view {view_name.name} with message ID {message_id} removed.")
+        return True
+    else:
+        logger.warning(f"No persistent view {view_name.name} with message ID {message_id} found.")
+        return False
 
 

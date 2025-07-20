@@ -1,6 +1,6 @@
 from discord import SlashCommandGroup, Option, Role, slash_command, TextChannel, Colour, Embed
 from discord.ext import commands
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 from app.logger import logger
 from app.lib.db.queries import CommandEnum, add_command_permission, remove_command_permission, set_guild_log_channel
 from discord import OptionChoice
@@ -8,7 +8,9 @@ from app.lib.extension_context import RematchApplicationContext as ApplicationCo
 from app.checks import require_role
 from app.views import RankLinkView
 from app.lib.db.schemes import RankLinkEnum
-from lib.db.queries import link_rank
+from lib.db.queries import link_rank, create_persistent_view
+from lib.db.schemes import PersistentViewEnum
+from views import OpenFormView
 
 if TYPE_CHECKING:
     from app.bot import RematchItaliaBot
@@ -16,6 +18,7 @@ if TYPE_CHECKING:
 
 COMMAND_CHOICES = [OptionChoice(c.name, c.value) for c in CommandEnum]
 RANK_CHOICES = [OptionChoice(r.name, str(r.value)) for r in RankLinkEnum]
+VIEW_ENUM_CHOICES = [OptionChoice(v.name, v.value) for v in PersistentViewEnum]
 
 
 class Manager(commands.Cog):
@@ -176,6 +179,89 @@ class Manager(commands.Cog):
         actx.log_message = f"{actx.author.mention} used command `/rank link`"
         actx.log_color = Colour.green() if success else Colour.red()
 
+    @slash_command(
+        name="rematch_form",
+        description="Imposta il modulo di link account Rematch.",
+        guild_ids=[996755561829912586]
+    )
+    @commands.guild_only()
+    @commands.check_any(
+        commands.has_guild_permissions(administrator=True),
+        require_role(CommandEnum.REMATCH_FORM)
+    )
+    async def setup_form(
+            self,
+            actx: ApplicationContext,
+            channel: Option(
+                TextChannel,
+                "Canale in cui inviare il modulo di link account Rematch.",
+                required=True
+            ),
+            content: Option(
+                str,
+                "Contenuto del modulo di link account Rematch.",
+                required=True,
+                default="Ciao! Per favore, collega il tuo account Rematch al tuo account Discord."
+            )
+    ):
+        ch: TextChannel = channel
+        embed = Embed(
+            title="📋 Compila il Form",
+            description=content,
+            colour=Colour.blurple()
+        )
+        embed.set_footer(text="© Rematch Italia, all rights reserved.")
+
+        view = OpenFormView()
+
+        msg = await ch.send(embed=embed, view=view)
+
+        await create_persistent_view(PersistentViewEnum.REMATCH_FORM, guild=actx.guild, channel=ch,
+                                                 message=msg)
+        actx.log_message = f"{actx.author.mention} set up the Rematch form in {ch.mention}."
+        actx.log_color = Colour.green()
+        await actx.respond(f"✅ Modulo di link account Rematch impostato in {ch.mention}.", ephemeral=True)
+
+    @slash_command(
+        name="load_persistent_view",
+        description="Carica una vista persistente (NOTA! da usare solo se la vista non è stata "
+                    "caricata automaticamente).",
+        guild_ids=[996755561829912586]
+    )
+    @commands.guild_only()
+    @commands.check_any(
+        commands.has_guild_permissions(administrator=True),
+        require_role(CommandEnum.LOAD_PERSISTENT_VIEW)
+    )
+    async def load_persistent_view(self,
+                                   actx: ApplicationContext,
+                                   view_name: Option(
+                                       str,
+                                       "Nome della vista persistente da caricare",
+                                       choices=VIEW_ENUM_CHOICES,
+                                   ),
+                                   message_id: Option(
+                                       int,
+                                       "ID del messaggio da cui caricare la vista",
+                                       required=True
+                                   ),
+                                   channel_id: Option(
+                                       int,
+                                       "ID del canale in cui si trova il messaggio. "
+                                       "Lascia vuoto per usare il canale corrente",
+                                        required=False,
+                                   )
+                                   ):
+        view_enum = PersistentViewEnum(view_name)
+        channel = actx.guild.get_channel(channel_id) if channel_id else actx.channel
+        persistent_view = await create_persistent_view(view_enum, actx.guild, channel, message_id)
+        if persistent_view:
+            await self.bot.load_persistent_view(view_enum, message_id)
+            actx.log_message = f"{actx.author.mention} loaded persistent view `{view_enum.name}` " \
+                                f"from message {message_id} in {channel.mention}."
+            actx.log_color = Colour.green()
+            await actx.respond(f"✅ Vista persistente `{view_enum.name}` caricata con successo dal messaggio "
+                               f"{message_id} in {channel.mention}.", ephemeral=True)
 
 
     @commands.Cog.listener()
