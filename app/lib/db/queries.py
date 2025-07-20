@@ -210,7 +210,6 @@ async def create_persistent_view(
 async def get_persistent_views(view_name: PersistentViewEnum) -> list[PersistentViews] | None:
     views = await PersistentViews.filter(view_name=view_name).prefetch_related("guild_id").all()
     if not views:
-        logger.debug(f"No persistent views found for {view_name.name}.")
         return None
     return views
 

@@ -146,7 +146,7 @@ class RematchLinkForm(Modal):
 
         if platform not in ["steam", "playstation", "xbox"]:
             await interaction.response.send_message(
-                "❌ Piattaforma non valida. Usa Steam, Playstation o Xbox.",
+                "❌ Piattaforma non valida. Inserisci `Steam`, `Playstation` o `Xbox`.",
                 ephemeral=True
             )
             return
