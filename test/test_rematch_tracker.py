@@ -1,5 +1,7 @@
 import dotenv
 dotenv.load_dotenv("../.env")
+
+from rematch_tracker import ProfileResponse, ProfilePlayer, ProfileRank
 import unittest
 from app.rematch_tracker import resolve_rematch_id
 from app.lib.db.schemes import PlatformEnum
@@ -19,12 +21,25 @@ class TestRematchTracker(unittest.IsolatedAsyncioTestCase):
         expected_platform_id = "3502400170348263876"
         expected_display_name = "Tvrsier"
 
-        response = await resolve_rematch_id(
+        response: ProfileResponse | None = await resolve_rematch_id(
             platform=PlatformEnum.PSN,
-            identifier=expected_platform_id
+            identifier=expected_display_name
+        )
+        player: ProfilePlayer = response["player"]
+        rank: ProfileRank = response["rank"]
+        self.assertIsNotNone(response)
+        self.assertEqual(player["platform_id"], expected_platform_id)
+        self.assertEqual(player["display_name"], expected_display_name)
+        self.assertEqual(player["level"], 181)
+        self.assertEqual(rank["current_league"], 5)
+
+
+
+
+    async def test_resolve_rematch_id_invalid_platform(self):
+        response = await resolve_rematch_id(
+            platform=PlatformEnum.STEAM,
+            identifier="invalid_identifier"
         )
 
-        self.assertIsNotNone(response, "Response should not be None")
-        self.assertEqual(response.get("platform_id"), expected_platform_id, "Platform ID does not match")
-        self.assertEqual(response.get("display_name"), expected_display_name, "Display name does not match")
-        self.assertTrue(response.get("success"), "Success flag should be True")
+        self.assertIsNone(response, "Response should be None for invalid platform or identifier")

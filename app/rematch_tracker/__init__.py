@@ -6,19 +6,21 @@ import os
 
 from app.lib.db.schemes import PlatformEnum
 from app.rematch_tracker.structures import ResolveResponse
+from rematch_tracker.structures import ProfileResponse, ProfilePlayer, ProfileRank
 
 RESOLVE_URL = os.getenv("RESOLVE_URL", None)
+PROFILE_URL = os.getenv("PROFILE_URL", None)
 
-if not RESOLVE_URL:
-    logger.error("RESOLVE_URL not found in environment variables. Please set it in your .env file.")
-    raise RuntimeError("RESOLVE_URL not found in environment variables. Please set it in your .env file.")
+if not RESOLVE_URL or not PROFILE_URL:
+    logger.error("RESOLVE_URL or PROFILE_RUL not found in environment variables. Please set it in your .env file.")
+    raise RuntimeError("RESOLVE_URL or PROFILE_URL not found in environment variables. Please set it in your .env file.")
 
 
 async def resolve_rematch_id(
         platform: PlatformEnum,
         identifier: str,
         timeout: float = 10.0
-) -> Optional[ResolveResponse]:
+) -> Optional[ProfileResponse]:
     """
     Resolve a Rematch ID to a platform and identifier.
     :param platform:
@@ -28,7 +30,7 @@ async def resolve_rematch_id(
     :param timeout:
         The timeout for the request in seconds.
     :return:
-        A dictionary containing the resolved platform, platform ID, and display name if successful,
+        A dictionary containing the resolved player in rematch_tracker
         or None if the resolution fails.
     """
     payload = {"platform": platform.value, "identifier": identifier}
@@ -49,19 +51,21 @@ async def resolve_rematch_id(
                                 returned, platform.value
                             )
                             return None
-                        # TODO call the profile API to get the rematch profile, check for steam players
-                        return ResolveResponse(
+
+                        resolve = ResolveResponse(
                             platform=data.get("platform"),
                             platform_id=data.get("platform_id"),
                             display_name=data.get("display_name"),
                             success=True
                         )
+                        # TODO call the profile API to get the rematch profile, check for steam players
+                        return await get_rematch_profile(resolve)
                     else:
-                        logger.info("Resolve: success flag false for %s: %s", platform, identifier)
+                        logger.error("Resolve: success flag false for %s: %s", platform, identifier)
                         return None
                 else:
                     err = await response.json()
-                    logger.info(f"Resolve: failed {platform}/{identifier} -> {response.status}: "
+                    logger.error(f"Resolve: failed {platform}/{identifier} -> {response.status}: "
                                 f"{err.get("error", "Unknown error")}")
                     return None
 
@@ -70,4 +74,60 @@ async def resolve_rematch_id(
             return None
         except Exception as e:
             logger.exception(f"Unexpected error in resolve_rematch_id: {e}", exc_info=True, exception=e)
+            return None
+
+
+async def get_rematch_profile(
+        resolve: ResolveResponse,
+        timeout: float = 10.0
+) -> Optional[ProfileResponse]:
+    """
+        Get rematch profile from the tracker given the tracker resolve response
+        :param resolve:
+            The resolve response from the previous call to scrap/resolve
+        :param timeout:
+            The timeout for the request in seconds.
+        :return:
+            A dictionary containing the fetched player
+            or None if the resolution fails.
+        """
+    payload = {
+        "platform": resolve["platform"],
+        "platformId": resolve["platform_id"]
+    }
+    headers = {"Content-Type": "application/json"}
+
+    async with aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=timeout)) as session:
+        try:
+            async with session.post(PROFILE_URL, json=payload, headers=headers) as resp:
+                text = await resp.text()
+                if resp.status == 200:
+                    data = await resp.json()
+                    if "player" in data and "rank" in data:
+                        profile_player = ProfilePlayer(**data["player"])
+                        rank = ProfileRank(**data["rank"])
+                        return ProfileResponse(player= profile_player, rank=rank)
+                    else:
+                        logger.error(f"Profile: no response for player id {resolve["platform_id"]}\n"
+                                     f"response: {data}")
+                        return None
+
+                elif resp.status == 400:
+                    err = await resp.json()
+                    logger.warning(
+                        f"Profile bad request {resolve['platform']}/{resolve["platform_id"]} -> {err.get("error")}"
+                    )
+                    return None
+                else:
+                    err = await resp.json()
+                    logger.warning(
+                        f"profile server error {resolve["platform"]}/{resolve["platform_id"]} -> "
+                        f"{err.get("error")} ({resp.status})"
+                    )
+                    return None
+        except aiohttp.ClientError as e:
+            logger.error(f"HTTP error in get_rematch_profile: {e}", exception=e, exc_info=True)
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error in get_rematch_profile: {e}", exception=e, exc_info=True)
             return None
