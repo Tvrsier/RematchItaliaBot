@@ -1,20 +1,21 @@
+from typing import TYPE_CHECKING
+
+from discord import OptionChoice
 from discord import SlashCommandGroup, Option, Role, slash_command, TextChannel, Colour, Embed
 from discord.ext import commands
-from typing import TYPE_CHECKING, Optional
-from app.logger import logger
-from app.lib.db.queries import CommandEnum, add_command_permission, remove_command_permission, set_guild_log_channel
-from discord import OptionChoice
-from app.lib.extension_context import RematchApplicationContext as ApplicationContext
+
 from app.checks import require_role
-from app.views import RankLinkView
+from app.lib.db.queries import CommandEnum, add_command_permission, remove_command_permission, set_guild_log_channel
 from app.lib.db.schemes import RankLinkEnum
+from app.lib.extension_context import RematchApplicationContext as ApplicationContext
+from app.logger import logger
+from app.views import RankLinkView
 from lib.db.queries import link_rank, create_persistent_view
 from lib.db.schemes import PersistentViewEnum
 from views import OpenFormView
 
 if TYPE_CHECKING:
     from app.bot import RematchItaliaBot
-
 
 COMMAND_CHOICES = [OptionChoice(c.name, c.value) for c in CommandEnum]
 RANK_CHOICES = [OptionChoice(r.name, str(r.value)) for r in RankLinkEnum]
@@ -49,7 +50,7 @@ class Manager(commands.Cog):
             command: Option(
                 str,
                 "Seleziona il comando",
-                choices = COMMAND_CHOICES
+                choices=COMMAND_CHOICES
             ),
             role: Option(Role, "Ruolo a cui concedere il permesso")
     ):
@@ -60,16 +61,14 @@ class Manager(commands.Cog):
             await actx.respond(f"✅ Permesso aggiunto per il comando `{command_enum.name}` al ruolo `{role.name}`.",
                                ephemeral=True)
             actx.log_message = f"{actx.author.mention} gave role `{role.name}` " \
-                                f"permission for command {command_enum.name}."
+                               f"permission for command {command_enum.name}."
             actx.color = Colour.green()
         else:
             await actx.respond(f"❌ Errore nell'aggiunta del permesso per il comando `{command_enum.name}` al ruolo "
                                f"`{role.name}`.", epheral=True)
             actx.log_message = f"{actx.author.mention} failed to give permission {command_enum.name} " \
-                                f"to `{role.name}`"
+                               f"to `{role.name}`"
             actx.color = Colour.red()
-
-
 
     @perms.command(
         name="remove",
@@ -94,13 +93,13 @@ class Manager(commands.Cog):
             await actx.respond(f"✅ Permesso rimosso per il comando `{command_enum.name}` dal ruolo `{role.name}`.",
                                ephemeral=True)
             actx.log_message = f"{actx.author.mention} removed role `{role.name}` " \
-                                f"permission for command {command_enum.name}."
+                               f"permission for command {command_enum.name}."
             actx.color = Colour.green()
         else:
             await actx.respond(f"❌ Errore nella rimozione del permesso per il comando `{command_enum.name}` dal ruolo "
                                f"`{role.name}`.", ephemeral=True)
             actx.log_message = f"{actx.author.mention} failed to remove permission {command_enum.name} " \
-                                f"from `{role.name}`"
+                               f"from `{role.name}`"
             actx.color = Colour.red()
 
     @slash_command(
@@ -215,12 +214,19 @@ class Manager(commands.Cog):
         view = OpenFormView()
 
         msg = await ch.send(embed=embed, view=view)
-
-        await create_persistent_view(PersistentViewEnum.REMATCH_FORM, guild=actx.guild, channel=ch,
-                                                 message=msg)
+        actx.__setattr__("msg", msg)
+        actx.__setattr__("ch", ch)
+        actx.__setattr__("view", PersistentViewEnum.REMATCH_FORM)
         actx.log_message = f"{actx.author.mention} set up the Rematch form in {ch.mention}."
         actx.log_color = Colour.green()
         await actx.respond(f"✅ Modulo di link account Rematch impostato in {ch.mention}.", ephemeral=True)
+
+    @setup_form.after_invoke
+    async def require_role_after_invoke(self, actx: ApplicationContext):
+        persistent_view = await create_persistent_view(actx.__getattribute__("view"), guild=actx.guild,
+                                                       channel=actx.__getattribute__("ch"),
+                                                       message=actx.__getattribute__("msg"))
+        logger.debug(f"Persistent view created: {persistent_view.id} ")
 
     @slash_command(
         name="load_persistent_view",
@@ -249,7 +255,7 @@ class Manager(commands.Cog):
                                        int,
                                        "ID del canale in cui si trova il messaggio. "
                                        "Lascia vuoto per usare il canale corrente",
-                                        required=False,
+                                       required=False,
                                    )
                                    ):
         view_enum = PersistentViewEnum(view_name)
@@ -258,11 +264,10 @@ class Manager(commands.Cog):
         if persistent_view:
             await self.bot.load_persistent_view(view_enum, message_id)
             actx.log_message = f"{actx.author.mention} loaded persistent view `{view_enum.name}` " \
-                                f"from message {message_id} in {channel.mention}."
+                               f"from message {message_id} in {channel.mention}."
             actx.log_color = Colour.green()
             await actx.respond(f"✅ Vista persistente `{view_enum.name}` caricata con successo dal messaggio "
                                f"{message_id} in {channel.mention}.", ephemeral=True)
-
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -273,4 +278,3 @@ class Manager(commands.Cog):
 def setup(bot: "RematchItaliaBot"):
     bot.add_cog(Manager(bot))
     logger.debug("Manager loaded successfully")
-

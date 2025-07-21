@@ -1,16 +1,17 @@
 import asyncio
+import os
 import sys
 import traceback
 from pathlib import Path
 
-from discord.ext.commands import Bot
 from discord import Intents, NoEntryPointError, ExtensionFailed, Activity, ActivityType, Interaction, Message
-import os
-from app.logger import logger
+from discord.ext.commands import Bot
+
 from app.lib.db import DatabaseManager
+from app.lib.db.queries import get_persistent_views
 from app.lib.db.schemes import GuildSchema, PersistentViewEnum
 from app.lib.extension_context import RematchContext as Context, RematchApplicationContext as ApplicationContext
-from app.lib.db.queries import get_persistent_views
+from app.logger import logger
 from app.views import RankLinkView, OpenFormView
 
 COGS_PATH = Path("./app/cogs")
@@ -160,22 +161,22 @@ class RematchItaliaBot(Bot):
                         guild = self.get_guild(v.guild_id.guild_id)
                         if not guild:
                             logger.warning(f"Guild {v.guild_id.guild_id} not found for persistent view {v.view_name}.")
-                            to_delete=True
+                            to_delete = True
                         channel = guild.get_channel(v.channel_id)
                         if not channel:
                             logger.warning(
                                 f"Channel {v.channel_id} not found in guild {guild.name} for persistent view {v.view_name}.")
-                            to_delete=True
+                            to_delete = True
                         try:
                             message = await channel.fetch_message(v.message_id)
                         except Exception as e:
                             logger.error(
                                 f"Failed to fetch message {v.message_id} in channel {v.channel_id} for persistent view {v.view_name}: {e}")
-                            to_delete=True
+                            to_delete = True
                         if not message:
                             logger.warning(
                                 f"Message {v.message_id} not found in channel {v.channel_id} for persistent view {v.view_name}.")
-                            to_delete=True
+                            to_delete = True
                         if to_delete:
                             logger.warning(f"Deleting persistent view {v.view_name} with message ID: {v.message_id} "
                                            f"because the message has been deleted or cannot be found.")

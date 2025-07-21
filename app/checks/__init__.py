@@ -1,10 +1,12 @@
 from discord.ext import commands
-from app.logger import logger
+
 from app.lib.db.queries import CommandEnum, get_command_permission
+from app.logger import logger
+
 
 def require_role(command: CommandEnum):
     async def predicate(ctx: commands.Context):
-        #check if author is admin
+        # check if author is admin
         if ctx.author.guild_permissions.administrator:
             return True
         guild = ctx.guild
@@ -21,4 +23,5 @@ def require_role(command: CommandEnum):
             logger.warning(f"User {ctx.author.name} does not have the required role to use this command.")
             await ctx.send("You do not have permission to use this command.")
             raise commands.CheckFailure("❌ Non hai i permessi per usare questo comando.")
+
     return commands.check(predicate)

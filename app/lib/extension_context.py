@@ -1,8 +1,8 @@
 import datetime
 from typing import Optional
 
-from discord.ext.commands import Context
 from discord import TextChannel, ApplicationContext, Colour, Embed
+from discord.ext.commands import Context
 
 
 class RematchContext(Context):
@@ -21,9 +21,9 @@ class RematchContext(Context):
                 embed.set_footer(text="ID: " + str(self.author.id))
                 await self.log_channel.send(embed=embed)
 
+
 class RematchApplicationContext(ApplicationContext):
     log_channel: Optional[TextChannel]
-
 
     async def send_log(self):
         if self.log_channel:

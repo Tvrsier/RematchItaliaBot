@@ -1,12 +1,11 @@
 from enum import Enum, IntEnum
-from tortoise import fields, models
 
-from typing import TYPE_CHECKING
+from tortoise import fields, models
 
 
 class PlatformEnum(str, Enum):
     STEAM = "steam"
-    PSN = "psn"
+    PSN = "playstation"
     XBOX = "xbox"
 
 
@@ -28,7 +27,6 @@ class RankLinkEnum(IntEnum):
 
 
 class PersistentViewEnum(str, Enum):
-    RANK_LINK = "rank_link"
     REMATCH_FORM = "rematch_form"
 
 
@@ -62,8 +60,7 @@ class PlatformLink(models.Model):
     discord_id = fields.ForeignKeyField("models.MemberSchema", related_name="platform_links",
                                         on_delete=fields.CASCADE, null=False)
     platform = fields.CharEnumField(PlatformEnum, null=False, max_length=10)
-    platform_id = fields.CharField(max_length=255, null=False)
-    cached_rank = fields.CharField(max_length=255, null=True)
+    cached_rank = fields.IntEnumField(RankLinkEnum)
     last_checked = fields.DatetimeField(auto_now_add=True, null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
 
@@ -82,7 +79,7 @@ class Rank(models.Model):
 class GuildMemberSchema(models.Model):
     id = fields.IntField(primary_key=True, unique=True)
     guild_id = fields.ForeignKeyField("models.GuildSchema", related_name="members",
-                                        on_delete=fields.CASCADE, null=False)
+                                      on_delete=fields.CASCADE, null=False)
     discord_id = fields.ForeignKeyField("models.MemberSchema", related_name="guild_members",
                                         on_delete=fields.CASCADE, null=False)
     joined_at = fields.DatetimeField(null=True)
@@ -101,7 +98,7 @@ class CommandPermissionSchema(models.Model):
     role_id = fields.BigIntField(null=False)
 
     class Meta:
-        table="command_permission"
+        table = "command_permission"
         unique_together = (("guild_id", "command", "role_id"),)
 
 

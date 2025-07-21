@@ -1,12 +1,12 @@
-import logging
-import logging.handlers
 import inspect
-from pathlib import Path
+import logging.handlers
 import os
+from pathlib import Path
 
 LOG_DIR = Path("logs")
 LOG_FILE = LOG_DIR / "rematch_italia.log"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
+
 
 class ClassNameFilter(logging.Filter):
     def filter(self, record):
@@ -29,11 +29,13 @@ class ClassNameFilter(logging.Filter):
             frame = frame.f_back
         return True
 
+
 class SmartClassFormatter(logging.Formatter):
     def format(self, record):
         if record.classname:
             record.classname = f"{record.classname}"
         return super().format(record)
+
 
 handler = logging.handlers.TimedRotatingFileHandler(
     LOG_FILE, when="midnight", interval=1, backupCount=5, encoding="utf-8"

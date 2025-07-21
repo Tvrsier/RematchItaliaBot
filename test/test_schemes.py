@@ -1,11 +1,9 @@
-import datetime
 import unittest
 from types import SimpleNamespace
 
 from tortoise import Tortoise
 
 from app.lib.db.queries import *
-
 
 
 class TestSchemes(unittest.IsolatedAsyncioTestCase):
@@ -19,7 +17,6 @@ class TestSchemes(unittest.IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         await Tortoise.close_connections()
-
 
     async def test_add_guild_creates_record(self):
         fake_guild = SimpleNamespace(
@@ -52,8 +49,8 @@ class TestSchemes(unittest.IsolatedAsyncioTestCase):
             discriminator="user",
             avatar=None,
             bot=False,
-            guild = fake_guild,
-            joined_at = datetime.datetime.now(datetime.UTC)
+            guild=fake_guild,
+            joined_at=datetime.datetime.now(datetime.UTC)
         )
         member_db, guild_member_db, created = await add_or_get_member(fake_member)
         self.assertTrue(created, "Member was created")
@@ -103,6 +100,7 @@ class TestSchemes(unittest.IsolatedAsyncioTestCase):
             await Rank.exists(guild_id=8888, name=rank.name, role_id=4444),
             "RankLinkSchema not found"
         )
+
 
 if __name__ == '__main__':
     unittest.main()

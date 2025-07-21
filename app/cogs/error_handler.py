@@ -1,14 +1,16 @@
-from discord.ext import commands
 from typing import TYPE_CHECKING
+
+from discord.ext import commands
+
 from app.logger import logger
 
 if TYPE_CHECKING:
     from app.bot import RematchItaliaBot
 
+
 class ErrorHandler(commands.Cog):
     def __init__(self, bot: "RematchItaliaBot"):
         self.bot = bot
-
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx: commands.Context, error: commands.CommandError):

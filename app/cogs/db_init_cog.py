@@ -1,15 +1,15 @@
 import asyncio
 import datetime
+from typing import TYPE_CHECKING
 
 from discord import Guild, Member
 from discord.ext import commands
-from typing import TYPE_CHECKING
-from app.logger import logger
+
 from app.lib.db import queries
+from app.logger import logger
 
 if TYPE_CHECKING:
     from app.bot import RematchItaliaBot
-
 
 
 class DBInitCog(commands.Cog):
@@ -108,7 +108,7 @@ class DBInitCog(commands.Cog):
     @staticmethod
     def check_fetch_members(cached, total) -> bool:
         if cached < total * 0.8:
-            logger.warning(f"Member cache contains only the {int(cached/total*100)}%, members will be fetched")
+            logger.warning(f"Member cache contains only the {int(cached / total * 100)}%, members will be fetched")
             return True
         return False
 
@@ -129,9 +129,6 @@ class DBInitCog(commands.Cog):
                 await member_db.save()
 
 
-
-
 def setup(bot: "RematchItaliaBot"):
     bot.add_cog(DBInitCog(bot))
     logger.debug("DBInitCog loaded successfully.")
-

@@ -1,9 +1,8 @@
+from typing import Dict
+
 import discord
 from discord import Guild, ButtonStyle, Embed, Colour
 from discord.ui import View, Select, Button, button, Modal
-from typing import Dict
-
-from pygame.examples.textinput import TextInput
 
 from app.lib.db.schemes import RankLinkEnum
 from app.logger import logger
@@ -119,7 +118,8 @@ class RematchLinkForm(Modal):
         super().__init__(
             discord.ui.InputText(
                 label="Nickname Rematch",
-                placeholder="Inserisci il tuo nickname su Rematch",
+                placeholder="Inserisci il tuo nickname su Rematch o il tuo steam id / link all'account "
+                            "se giochi da Steam",
                 style=discord.InputTextStyle.long,
                 required=True,
             ),
@@ -165,6 +165,6 @@ class OpenFormView(View):
         super().__init__(timeout=timeout)
 
     # noinspection PyTypeChecker
-    @button(label="Compila il form", style=discord.ButtonStyle.primary, custom_id="open_form_button")
+    @button(label="Compila il form", style=discord.ButtonStyle.red, custom_id="open_form_button")
     async def open_form(self, btn: discord.ui.Button, interaction: discord.Interaction):
         await interaction.response.send_modal(RematchLinkForm(title="Compila il form di collegamento a Rematch"))

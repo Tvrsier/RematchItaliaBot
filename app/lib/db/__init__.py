@@ -4,6 +4,7 @@ import signal
 from typing import Any, Sequence
 
 from tortoise import Tortoise, connections, BaseDBAsyncClient
+
 from app.logger import logger
 
 
@@ -33,7 +34,7 @@ class DatabaseManager:
     @staticmethod
     async def close() -> None:
         await Tortoise.close_connections()
-        DatabaseManager._initialized=False
+        DatabaseManager._initialized = False
 
     def _sync_close(self) -> None:
         try:
@@ -71,4 +72,3 @@ if __name__ == "__main__":
     asyncio.run(db_manager.connect())
     logger.info("Database initialized and schemas generated.")
     asyncio.run(db_manager.close())
-

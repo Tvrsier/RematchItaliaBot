@@ -1,8 +1,10 @@
-from discord import Role, Guild, Member, TextChannel, User, Message
 import datetime
 
-from app.logger import logger
+from discord import Role, Guild, Member, TextChannel, Message
+
 from app.lib.db.schemes import *
+from app.logger import logger
+
 
 async def add_or_get_guild(guild: Guild) -> tuple[GuildSchema, bool]:
     db_guild, created = await GuildSchema.get_or_create(
@@ -45,8 +47,8 @@ async def add_or_get_member(member: Member) -> tuple[MemberSchema, GuildMemberSc
 
 
 async def add_or_get_guild_member(member: Member) -> GuildMemberSchema | None:
-    guild_model = await GuildSchema.get_or_none(guild_id = member.guild.id)
-    member_model = await MemberSchema.get_or_none(discord_id = member.id)
+    guild_model = await GuildSchema.get_or_none(guild_id=member.guild.id)
+    member_model = await MemberSchema.get_or_none(discord_id=member.id)
     if guild_model:
         guild_member, created = await GuildMemberSchema.get_or_create(
             guild_id=guild_model,
@@ -85,14 +87,14 @@ async def member_left(discord_user: Member, left_at: datetime.datetime, guild_id
 async def add_command_permission(
         guild: Guild, command: CommandEnum, role_id: int
 ) -> tuple[CommandPermissionSchema | None, bool | None]:
-    db_guild = await GuildSchema.get_or_none(guild_id = guild.id)
+    db_guild = await GuildSchema.get_or_none(guild_id=guild.id)
     if not db_guild:
         logger.error("Guild not found in database, cannot add permission.")
         return None, None
     permission, created = await CommandPermissionSchema.get_or_create(
-        guild_id = db_guild,
-        command = command,
-        role_id = role_id
+        guild_id=db_guild,
+        command=command,
+        role_id=role_id
     )
     if created:
         logger.info(f"Command permission {command} for role {role_id} added to guild {guild.name}")
@@ -113,6 +115,7 @@ async def get_command_permission(guild: Guild, command: CommandEnum) -> list[Com
     ).all()
     return permissions
 
+
 async def get_command_permissions(guild: Guild) -> list[CommandPermissionSchema]:
     db_guild = await GuildSchema.get_or_none(guild_id=guild.id)
     if not db_guild:
@@ -122,6 +125,7 @@ async def get_command_permissions(guild: Guild) -> list[CommandPermissionSchema]
         guild_id=db_guild
     ).all()
     return permissions
+
 
 async def remove_command_permission(
         guild: Guild, command: CommandEnum, role_id: int
@@ -143,6 +147,7 @@ async def remove_command_permission(
         logger.warning(f"No command permission {command} for role {role_id} found in guild {guild.name}")
         return False
 
+
 async def set_guild_log_channel(guild: Guild, channel: TextChannel) -> bool:
     db_guild = await GuildSchema.get_or_none(guild_id=guild.id)
     if not db_guild:
@@ -160,7 +165,7 @@ async def link_rank(guild: Guild, role: Role, rank: RankLinkEnum) -> tuple[Rank 
         logger.error("Guild not found in database, cannot link rank.")
         return None, False
     rank_link, created = await Rank.get_or_create(
-        guild_id = db_guild,
+        guild_id=db_guild,
         name=rank.name,
         defaults={
             "role_id": role.id,
@@ -175,6 +180,7 @@ async def link_rank(guild: Guild, role: Role, rank: RankLinkEnum) -> tuple[Rank 
             rank_link.updated_at = datetime.datetime.now(datetime.UTC)
             await rank_link.save()
     return rank_link, created
+
 
 async def get_guild(guild: Guild) -> GuildSchema | None:
     db_guild = await GuildSchema.get_or_none(guild_id=guild.id)
@@ -193,19 +199,20 @@ async def get_member(member: Member) -> MemberSchema | None:
 
 
 async def create_persistent_view(
-    view_name: PersistentViewEnum, guild: Guild, channel: TextChannel, message: Message
+        view_name: PersistentViewEnum, guild: Guild, channel: TextChannel, message: Message
 ) -> PersistentViews:
     guild_db = await GuildSchema.get_or_none(guild_id=guild.id)
     persistent_view, created = await PersistentViews.get_or_create(
         view_name=view_name,
-        guild_id = guild_db,
-        channel_id = channel.id,
-        message_id = message.id
+        guild_id=guild_db,
+        channel_id=channel.id,
+        message_id=message.id
     )
     if not created:
         persistent_view.message_id = message.id
         await persistent_view.save()
     return persistent_view
+
 
 async def get_persistent_views(view_name: PersistentViewEnum) -> list[PersistentViews] | None:
     views = await PersistentViews.filter(view_name=view_name).prefetch_related("guild_id").all()
@@ -213,8 +220,9 @@ async def get_persistent_views(view_name: PersistentViewEnum) -> list[Persistent
         return None
     return views
 
+
 async def remove_persistent_view(
-    view_name: PersistentViewEnum, message_id: int
+        view_name: PersistentViewEnum, message_id: int
 ) -> bool:
     persistent_view = await PersistentViews.filter(
         view_name=view_name,
@@ -229,3 +237,42 @@ async def remove_persistent_view(
         return False
 
 
+async def create_platform_link(
+        member: Member, platform: PlatformEnum, cached_rank: RankLinkEnum
+) -> tuple[PlatformLink | None, bool]:
+    member_db = await get_member(member)
+    if not member_db:
+        logger.error(f"Member {member.name} ({member.id}) not found in database.")
+        return None, False
+    platform_link, created = await PlatformLink.get_or_create(
+        discord_id=member_db,
+        platform=platform,
+        defaults={
+            "cached_rank": cached_rank,
+            "last_checked": datetime.datetime.now(datetime.UTC),
+        }
+    )
+    if not created:
+        if platform_link.cached_rank != cached_rank:
+            platform_link.cached_rank = cached_rank
+            platform_link.last_checked = datetime.datetime.now(datetime.UTC)
+            await platform_link.save()
+    return platform_link, created
+
+
+async def update_rank(
+        member: Member, cached_rank: RankLinkEnum
+) -> PlatformLink | None:
+    member_db = await get_member(member)
+    if not member_db:
+        logger.error(f"Member {member.name} ({member.id}) not found in database.")
+        return None
+    platform_link = await PlatformLink.get_or_none(discord_id=member_db)
+    if not platform_link:
+        logger.error(f"No platform link found for member {member.name} ({member.id}).")
+        return None
+    platform_link.cached_rank = cached_rank
+    platform_link.last_checked = datetime.datetime.now(datetime.UTC)
+    await platform_link.save()
+    logger.info(f"Updated cached rank for member {member.name} ({member.id}) to {cached_rank.name}.")
+    return platform_link
