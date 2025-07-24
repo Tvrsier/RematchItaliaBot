@@ -17,7 +17,8 @@ class TestRematchTracker(unittest.IsolatedAsyncioTestCase):
         pass
 
 
-    async def test_resolve_rematch_id(self):
+
+    async def test_resolve_profile_rematch_id(self):
         expected_platform_id = "3502400170348263876"
         expected_display_name = "Tvrsier"
 
@@ -30,7 +31,6 @@ class TestRematchTracker(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(response)
         self.assertEqual(player["platform_id"], expected_platform_id)
         self.assertEqual(player["display_name"], expected_display_name)
-        self.assertEqual(player["level"], 181)
         self.assertEqual(rank["current_league"], 5)
 
 

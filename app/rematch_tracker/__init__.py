@@ -58,7 +58,6 @@ async def resolve_rematch_id(
                             display_name=data.get("display_name"),
                             success=True
                         )
-                        # TODO call the profile API to get the rematch profile, check for steam players
                         return await get_rematch_profile(resolve)
                     else:
                         logger.error("Resolve: success flag false for %s: %s", platform, identifier)
@@ -70,10 +69,10 @@ async def resolve_rematch_id(
                     return None
 
         except aiohttp.ClientError as e:
-            logger.error(f"HTTP error in resolve_rematch_id: {e}", exc_info=True, exception=e)
+            logger.error(f"HTTP error in resolve_rematch_id: {e}", exc_info=True)
             return None
         except Exception as e:
-            logger.exception(f"Unexpected error in resolve_rematch_id: {e}", exc_info=True, exception=e)
+            logger.exception(f"Unexpected error in resolve_rematch_id: {e}", exc_info=True)
             return None
 
 

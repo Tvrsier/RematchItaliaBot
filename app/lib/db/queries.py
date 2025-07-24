@@ -4,6 +4,7 @@ from discord import Role, Guild, Member, TextChannel, Message
 
 from app.lib.db.schemes import *
 from app.logger import logger
+from rematch_tracker import ProfileResponse
 
 
 async def add_or_get_guild(guild: Guild) -> tuple[GuildSchema, bool]:
@@ -167,8 +168,8 @@ async def link_rank(guild: Guild, role: Role, rank: RankLinkEnum) -> tuple[Rank 
     rank_link, created = await Rank.get_or_create(
         guild_id=db_guild,
         name=rank.name,
+        role_id = role.id,
         defaults={
-            "role_id": role.id,
             "rank_position": rank.value,
             "updated_at": datetime.datetime.now(datetime.UTC)
         }
@@ -181,6 +182,17 @@ async def link_rank(guild: Guild, role: Role, rank: RankLinkEnum) -> tuple[Rank 
             await rank_link.save()
     return rank_link, created
 
+
+async def get_role(guild: Guild, rank: RankLinkEnum) -> int | None:
+    db_guild = await GuildSchema.get_or_none(guild_id=guild.id)
+    if not db_guild:
+        logger.error(f"Guild {guild.name} ({guild.id}) not found in database")
+        return None
+    rank_obj = await Rank.get_or_none(guild_id = db_guild, name=rank.name)
+    if not rank_obj:
+        logger.error("Failed to retrieve rank object from database")
+        return None
+    return rank_obj.role_id
 
 async def get_guild(guild: Guild) -> GuildSchema | None:
     db_guild = await GuildSchema.get_or_none(guild_id=guild.id)
@@ -238,24 +250,29 @@ async def remove_persistent_view(
 
 
 async def create_platform_link(
-        member: Member, platform: PlatformEnum, cached_rank: RankLinkEnum
+        member: Member, profile: ProfileResponse
 ) -> tuple[PlatformLink | None, bool]:
     member_db = await get_member(member)
     if not member_db:
         logger.error(f"Member {member.name} ({member.id}) not found in database.")
         return None, False
+    cached_rank = RankLinkEnum(profile["rank"]["current_league"])
+    platform = profile["player"]["platform"] if profile["player"]["platform"] != "psn" else "playstation"
     platform_link, created = await PlatformLink.get_or_create(
         discord_id=member_db,
-        platform=platform,
+        platform_id=profile["player"]["platform_id"],
         defaults={
+            "platform": platform,
             "cached_rank": cached_rank,
             "last_checked": datetime.datetime.now(datetime.UTC),
+            "rematch_display_name": profile["player"]["display_name"]
         }
     )
     if not created:
         if platform_link.cached_rank != cached_rank:
             platform_link.cached_rank = cached_rank
             platform_link.last_checked = datetime.datetime.now(datetime.UTC)
+            platform_link.rematch_display_name = profile["player"]["display_name"]
             await platform_link.save()
     return platform_link, created
 

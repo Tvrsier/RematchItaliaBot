@@ -59,8 +59,9 @@ class PlatformLink(models.Model):
     id = fields.IntField(primary_key=True, unique=True)
     discord_id = fields.ForeignKeyField("models.MemberSchema", related_name="platform_links",
                                         on_delete=fields.CASCADE, null=False)
-    platform = fields.CharEnumField(PlatformEnum, null=False, max_length=10)
+    platform = fields.CharEnumField(PlatformEnum, null=False, max_length=20)
     platform_id = fields.CharField(max_length=255, null=False)
+    rematch_display_name = fields.CharField(max_length=255, null=False)
     cached_rank = fields.IntEnumField(RankLinkEnum)
     last_checked = fields.DatetimeField(auto_now_add=True, null=True)
     created_at = fields.DatetimeField(auto_now_add=True)

@@ -1,18 +1,22 @@
 import asyncio
+import datetime
 import os
 import sys
 import traceback
 from pathlib import Path
 
-from discord import Intents, NoEntryPointError, ExtensionFailed, Activity, ActivityType, Interaction, Message
+from discord import Intents, NoEntryPointError, ExtensionFailed, Activity, ActivityType, Interaction, Message, Member, \
+    TextChannel, Embed, Role, Colour
 from discord.ext.commands import Bot
 
 from app.lib.db import DatabaseManager
-from app.lib.db.queries import get_persistent_views
+from app.lib.db.queries import get_persistent_views, get_role
 from app.lib.db.schemes import GuildSchema, PersistentViewEnum
 from app.lib.extension_context import RematchContext as Context, RematchApplicationContext as ApplicationContext
 from app.logger import logger
-from app.views import RankLinkView, OpenFormView
+from app.views import OpenFormView
+from lib.db.queries import get_guild
+from lib.db.schemes import RankLinkEnum
 
 COGS_PATH = Path("./app/cogs")
 if not COGS_PATH.exists():
@@ -23,7 +27,6 @@ OWNER_IDS = [int(x) for x in os.getenv("OWNER_IDS", "").split(",") if x]
 COGS = [p.stem for p in COGS_PATH.glob("*.py")]
 
 PERSISTENT_VIEW_DICT = {
-    PersistentViewEnum.RANK_LINK: RankLinkView,
     PersistentViewEnum.REMATCH_FORM: OpenFormView,
 }
 
@@ -182,7 +185,7 @@ class RematchItaliaBot(Bot):
                                            f"because the message has been deleted or cannot be found.")
                             await v.delete()
                             continue
-                        self.add_view(view=PERSISTENT_VIEW_DICT.get(v.view_name)(timeout=None),
+                        self.add_view(view=PERSISTENT_VIEW_DICT.get(v.view_name)(bot=self, timeout=None),
                                       message_id=v.message_id)
                         logger.debug(f"Persistent view loaded: {v.view_name} with message ID: {v.message_id}")
             else:
@@ -194,4 +197,50 @@ class RematchItaliaBot(Bot):
                                    view_name: PersistentViewEnum,
                                    message_id: int):
         """Load a specific persistent view by name and message ID."""
-        self.add_view(view=PERSISTENT_VIEW_DICT.get(view_name)(timeout=None), message_id=message_id)
+        self.add_view(view=PERSISTENT_VIEW_DICT.get(view_name)(bot=self, timeout=None), message_id=message_id)
+
+    # noinspection PyMethodMayBeStatic
+    async def update_member_rank(self, member: Member, new_rank: RankLinkEnum) -> None:
+        guild = member.guild
+        new_role: Role | None = None
+        rank_to_role_id = {}
+        for rank in RankLinkEnum:
+            role_id = await get_role(guild, rank)
+            if role_id is not None:
+                rank_to_role_id[rank] = role_id
+
+        to_remove = []
+        for rank, role_id in rank_to_role_id.items():
+            if rank is new_rank:
+                continue
+            role = guild.get_role(role_id)
+            if role and role in member.roles:
+                to_remove.append(role)
+
+        if to_remove:
+            await member.remove_roles(
+                *to_remove,
+                reason="Removing old ranks"
+            )
+        new_role_id = rank_to_role_id.get(new_rank)
+        if new_role_id:
+            new_role = guild.get_role(new_role_id)
+            if new_role and new_role not in member.roles:
+                await member.add_roles(
+                    new_role,
+                    reason="Automatic rank update"
+                )
+
+        db_guild = await get_guild(guild)
+        if db_guild.log_chanel_id:
+            log_channel: TextChannel = guild.get_channel(db_guild.log_chanel_id)
+            embed = Embed(
+                title="Auto Rank Update",
+                description=f"Member {member.mention} rank updated to {new_role.mention}",
+                color=Colour.dark_gold(),
+                timestamp=datetime.datetime.now(datetime.UTC)
+            )
+            embed.set_author(name=self.user.name, icon_url=self.user.avatar.url if self.user.avatar else None)
+            embed.set_footer(text="© Rematch Italia. All rights reserved.")
+            await log_channel.send(embed=embed)
+

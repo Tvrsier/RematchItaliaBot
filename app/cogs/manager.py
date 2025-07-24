@@ -211,7 +211,7 @@ class Manager(commands.Cog):
         )
         embed.set_footer(text="© Rematch Italia, all rights reserved.")
 
-        view = OpenFormView()
+        view = OpenFormView(bot=self.bot)
 
         msg = await ch.send(embed=embed, view=view)
         actx.__setattr__("msg", msg)

@@ -1,12 +1,18 @@
-from typing import Dict
+from typing import Dict, Tuple
 
 import discord
-from discord import Guild, ButtonStyle, Embed, Colour
+from discord import Guild, ButtonStyle, Embed, Colour, Member
 from discord.ui import View, Select, Button, button, Modal
 
 from app.lib.db.schemes import RankLinkEnum
 from app.logger import logger
-from lib.db.queries import link_rank
+from lib.db.queries import link_rank, create_platform_link, get_role
+from lib.db.schemes import PlatformEnum
+from rematch_tracker import ProfilePlayer, ProfileResponse, resolve_rematch_id
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.bot import RematchItaliaBot
 
 
 class RoleDropdown(Select):
@@ -113,7 +119,8 @@ class RankLinkView(View):
 
 
 class RematchLinkForm(Modal):
-    def __init__(self, title="Rematch Link Form", *args, **kwargs):
+    def __init__(self, bot: "RematchItaliaBot", title="Rematch Link Form", *args, **kwargs):
+        self.bot = bot
         # noinspection PyTypeChecker
         super().__init__(
             discord.ui.InputText(
@@ -125,7 +132,7 @@ class RematchLinkForm(Modal):
             ),
             discord.ui.InputText(
                 label="Piattaforma",
-                value="Inserisci la tua piattaforma di gioco tra Steam, Playstation o Xbox",
+                placeholder="Steam, Playstation o Xbox",
                 style=discord.InputTextStyle.short,
                 required=True
             ),
@@ -150,21 +157,63 @@ class RematchLinkForm(Modal):
                 ephemeral=True
             )
             return
+        try:
+            profile: ProfileResponse
+            profile,  created = await get_platform_link(interaction.user, identifier=nickname,
+                                                        platform=PlatformEnum(platform))
+            if profile is None:
+                await interaction.response.send_message(
+                    "❌ Non è stato possibile trovare il tuo profilo di Rematch. "
+                    "Assicurati che il nickname sia e di aver scelto la piattaforma corretta."
+                    "Ti ricordo che se giochi da Steam devi inserire il tuo steam id o il link del profilo.",
+                    ephemeral=True
+                )
+                return
+            if not created:
+                await interaction.response.send_message(
+                    "❌ Il tuo profilo è già collegato a Rematch.",
+                    ephemeral=True
+                )
+                return
+            rank = RankLinkEnum(profile["rank"]["current_league"])
 
-        logger.debug("Received Rematch link request: Nickname=%s, Platform=%s", nickname, platform)
+            await self.bot.update_member_rank(interaction.user, rank)
+        except Exception as e:
+            logger.error(f"Error updating member rank: {e}", exc_info=True)
+            await interaction.response.send_message(
+                "❌ Si è verificato un errore durante l'inserimento del tuo profilo. "
+                "Per favore, riprova più tardi.",
+                ephemeral=True
+            )
+            return
         await interaction.response.send_message(
-            f"✅ Richiesta di collegamento a Rematch ricevuta!\n"
-            f"Nickname: {nickname}\n"
-            f"Piattaforma: {platform.capitalize()}",
+            "✅ Il tuo profilo è stato collegato correttamente!\n",
             ephemeral=True
         )
 
 
 class OpenFormView(View):
-    def __init__(self, timeout: float | None = None):
+    def __init__(self, bot: "RematchItaliaBot", timeout: float | None = None):
         super().__init__(timeout=timeout)
+        self.bot = bot
 
-    # noinspection PyTypeChecker
+    # noinspection PyTypeChecker,PyUnusedLocal
     @button(label="Compila il form", style=discord.ButtonStyle.red, custom_id="open_form_button")
-    async def open_form(self, btn: discord.ui.Button, interaction: discord.Interaction):
-        await interaction.response.send_modal(RematchLinkForm(title="Compila il form di collegamento a Rematch"))
+    async def open_form(self, btn: Button, interaction: discord.Interaction):
+        await interaction.response.send_modal(RematchLinkForm(bot=self.bot,
+                                                              title="Compila il form di collegamento a Rematch"
+                                                              ))
+
+
+
+async def get_platform_link(member: Member, identifier: str, platform: PlatformEnum) -> Tuple[ProfileResponse, bool] | None:
+    profile: ProfileResponse = await resolve_rematch_id(platform=platform, identifier=identifier)
+    if profile is None:
+        logger.warning("Failed to resolve Rematch ID for %s on platform %s", identifier, platform.value)
+        return None
+    platform_link, created = await create_platform_link(member=member, profile=profile)
+    if platform_link is None:
+        logger.warning("There was a problem saving player information")
+        return None
+    return profile, created
+
