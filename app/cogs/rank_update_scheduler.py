@@ -4,10 +4,10 @@ from typing import TYPE_CHECKING
 from discord import Cog, User, Guild
 from discord.ext import commands, tasks
 from app.logger import logger
-from app.lib.db.queries import get_platform_to_update, check_guild_rank
+from app.lib.db.queries import get_platform_to_update, check_guild_rank, update_rank
 from app.lib.db.schemes import PlatformLink, PlatformEnum, RankLinkEnum
-from app.rematch_tracker import get_rematch_profile
-from rematch_tracker import ProfileResponse
+from app.rematch_tracker import get_rematch_profile, ProfileResponse
+from app.lib.extension_context import RematchContext as Context
 
 RANK_UPDATE_SCHEDULER_INTERVAL = int(os.getenv("RANK_UPDATE_SCHEDULER_INTERVAL", "1800"))
 
@@ -63,8 +63,8 @@ class RankUpdateScheduler(Cog):
                     continue
                 rank = RankLinkEnum(profile["rank"]["current_league"])
                 if rank != link.cached_rank:
-                    ret[link.discord_id.discord_id] = rank
-                    logger.debug(f"Rank set for update for {link.discord_id.discord_id}: {rank}")
+                    ret[link.discord_id_id] = rank
+                    logger.debug(f"Rank set for update for {link.discord_id_id}: {rank}")
                 else:
                     original_links.remove(link)
             except Exception as e:
@@ -129,6 +129,7 @@ class RankUpdateScheduler(Cog):
                             logger.error(f"Failed to fetch member {user.id} in guild {guild.id}: {e}", exc_info=True)
                             continue
                     await self.bot.update_member_rank(member, rank)
+                    await update_rank(member, rank)
                     logger.debug(f"Updated rank for user {user.id} in guild {guild.id}.")
                 except Exception as e:
                     logger.error(f"Failed to update rank for user {user.id} in guild {guild.id}: {e}", exc_info=True)
@@ -147,12 +148,16 @@ class RankUpdateScheduler(Cog):
         logger.debug(f"Checking ranks of {len(platform_links)} members...")
 
         to_update = await self._fetch_rematch_profile(platform_links)
+        del platform_links
         discord_ids = list(to_update.keys())
         users = await self._fetch_users(discord_ids)
+        del discord_ids
         if not users:
             logger.info("No users to update ranks for.")
             return
         member_guilds_map = await self._get_mutual_guilds(users)
+        del users
+        self.bot.memory_monitor()
         await self._update_member_ranks(member_guilds_map, to_update)
         logger.info("Rank update scheduler completed.")
 
@@ -165,6 +170,21 @@ class RankUpdateScheduler(Cog):
         """
         await self.bot.wait_until_ready()
         logger.info("Rank update scheduler is ready.")
+
+    @commands.command(
+        name="rank_update_scheduler",
+        description="Starts the rank update scheduler.",
+        hidden=True
+    )
+    @commands.is_owner()
+    async def run_scheduler(self, ctx: Context):
+        """
+        This command starts the rank update scheduler.
+        It is intended for use by the bot owner only.
+        """
+        await self._updater_loop()
+        await ctx.send("Rank update scheduler started.")
+
 
     @commands.Cog.listener()
     async def on_ready(self):

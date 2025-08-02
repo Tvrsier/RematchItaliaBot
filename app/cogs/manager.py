@@ -105,7 +105,6 @@ class Manager(commands.Cog):
     @slash_command(
         name="log_channel",
         description="Imposta il canale di log per i comandi.",
-        guild_ids=[996755561829912586]
     )
     @commands.check_any(
         commands.has_guild_permissions(administrator=True),
@@ -250,17 +249,19 @@ class Manager(commands.Cog):
                                        choices=VIEW_ENUM_CHOICES,
                                    ),
                                    message_id: Option(
-                                       int,
+                                       str,
                                        "ID del messaggio da cui caricare la vista",
                                        required=True
                                    ),
                                    channel_id: Option(
-                                       int,
+                                       str,
                                        "ID del canale in cui si trova il messaggio. "
                                        "Lascia vuoto per usare il canale corrente",
                                        required=False,
                                    )
                                    ):
+        message_id = int(message_id)
+        channel_id = int(channel_id) if channel_id else None
         view_enum = PersistentViewEnum(view_name)
         channel = actx.guild.get_channel(channel_id) if channel_id else actx.channel
         persistent_view = await create_persistent_view(view_enum, actx.guild, channel, message_id)

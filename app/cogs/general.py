@@ -16,8 +16,7 @@ class GeneralCog(Cog):
         self.bot = bot
 
 
-    @commands.slash_command(name="ping", description="Controlla la latenza del bot.",
-                            guild_ids=[996755561829912586])
+    @commands.slash_command(name="ping", description="Controlla la latenza del bot.")
     async def ping(self, actx: ApplicationContext):
         """
         This command checks the bot's latency.
@@ -26,8 +25,7 @@ class GeneralCog(Cog):
         latency = round(self.bot.latency * 1000)
         await actx.respond(f"🏓 Pong! Latency: {latency} ms")
 
-    @commands.slash_command(name="feedback", description="Invia un feedback agli sviluppatori.",
-                            guild_ids=[996755561829912586])
+    @commands.slash_command(name="feedback", description="Invia un feedback agli sviluppatori.",)
     async def feedback(self, actx: ApplicationContext, message: str):
         """
         This command allows users to send feedback to the bot developers.

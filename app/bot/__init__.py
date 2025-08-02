@@ -3,6 +3,7 @@ import datetime
 import os
 import sys
 import traceback
+import psutil
 from pathlib import Path
 
 from discord import Intents, NoEntryPointError, ExtensionFailed, Activity, ActivityType, Interaction, Message, Member, \
@@ -117,6 +118,7 @@ class RematchItaliaBot(Bot):
             self.__ready__ = True
         await self.load_persistent_views()
         logger.info("Rematch Italia Bot is ready!")
+        self.memory_monitor()
         await self.change_presence(activity=Activity(type=ActivityType.watching,
                                                      name=f"{len(self.users)} users |"))
 
@@ -246,3 +248,16 @@ class RematchItaliaBot(Bot):
             embed.set_footer(text="© Rematch Italia. All rights reserved.")
             await log_channel.send(embed=embed)
 
+    # noinspection PyMethodMayBeStatic
+    def memory_monitor(self):
+        """Monitor memory usage of the bot."""
+        process = psutil.Process(os.getpid())
+        memory_info = process.memory_info()
+        cpu_pct = process.cpu_percent(interval=1.0)
+        logger.info(f"Memory usage: RSS={memory_info.rss / (1024 * 1024):.2f} MB, "
+                    f"VMS={memory_info.vms / (1024 * 1024):.2f} MB"
+                    f", CPU usage: {cpu_pct}%")
+        asyncio.get_event_loop().call_later(5, self.memory_monitor)
+
+
+  # Schedule next
