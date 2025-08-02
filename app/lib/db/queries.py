@@ -293,3 +293,37 @@ async def update_rank(
     await platform_link.save()
     logger.info(f"Updated cached rank for member {member.name} ({member.id}) to {cached_rank.name}.")
     return platform_link
+
+
+async def get_platform_to_update() -> list[PlatformLink]:
+    """
+    Retrieves a list of platform links where their last checked time is older than 15 minutes.
+    :return:
+    """
+    thirteen_minutes_ago = datetime.datetime.now(datetime.UTC) - datetime.timedelta(minutes=30)
+    platform_links = await PlatformLink.filter(last_checked__lt=thirteen_minutes_ago).all()
+    if not platform_links:
+        logger.info("No platform links found that need updating.")
+        return []
+    logger.info(f"Found {len(platform_links)} platform links that need updating.")
+    return platform_links
+
+
+async def check_guild_rank(guild: Guild) -> bool:
+    """
+    Checks if the guild has linked ranks.
+    :param guild:
+        The guild to check for linked ranks.
+    :return:
+        True if the guild has linked ranks, False otherwise.
+    """
+    db_guild = await GuildSchema.get_or_none(guild_id=guild.id)
+    if not db_guild:
+        logger.error(f"Guild {guild.name} ({guild.id}) not found in database.")
+        return False
+    ranks = await Rank.filter(guild_id=db_guild).all()
+    if not ranks:
+        logger.info(f"No ranks linked for guild {guild.name} ({guild.id}).")
+        return False
+    logger.info(f"Guild {guild.name} ({guild.id}) has {len(ranks)} linked ranks.")
+    return True

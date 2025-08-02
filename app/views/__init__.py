@@ -215,5 +215,6 @@ async def get_platform_link(member: Member, identifier: str, platform: PlatformE
     if platform_link is None:
         logger.warning("There was a problem saving player information")
         return None
+    logger.debug("Platform link created: %s", platform_link)
     return profile, created
 

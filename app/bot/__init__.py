@@ -70,6 +70,7 @@ class RematchItaliaBot(Bot):
         self.owner_ids = OWNER_IDS
         self.before_invoke(self._inject_log_channel)
         self.after_invoke(self._auto_log)
+        self.auto_sync_commands = True  # Automatically sync commands on startup
 
     def run(self, version: str):
         self.version = version

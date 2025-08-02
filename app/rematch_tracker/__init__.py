@@ -58,7 +58,7 @@ async def resolve_rematch_id(
                             display_name=data.get("display_name"),
                             success=True
                         )
-                        return await get_rematch_profile(resolve)
+                        return await get_rematch_profile(resolve=resolve)
                     else:
                         logger.error("Resolve: success flag false for %s: %s", platform, identifier)
                         return None
@@ -77,11 +77,15 @@ async def resolve_rematch_id(
 
 
 async def get_rematch_profile(
-        resolve: ResolveResponse,
-        timeout: float = 10.0
+        timeout: float = 10.0,
+        resolve: ResolveResponse | None = None,
+        platform: Optional[str] = None,
+        platform_id: Optional[str] = None
 ) -> Optional[ProfileResponse]:
     """
         Get rematch profile from the tracker given the tracker resolve response
+        :param platform: The platform to use for the request.
+        :param platform_id: The platform ID to use for the request.
         :param resolve:
             The resolve response from the previous call to scrap/resolve
         :param timeout:
@@ -91,8 +95,8 @@ async def get_rematch_profile(
             or None if the resolution fails.
         """
     payload = {
-        "platform": resolve["platform"],
-        "platformId": resolve["platform_id"]
+        "platform": resolve["platform"] if platform is None else platform,
+        "platformId": resolve["platform_id"] if platform_id is None else platform_id,
     }
     headers = {"Content-Type": "application/json"}
 
