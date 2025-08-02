@@ -14,6 +14,7 @@ class CommandEnum(str, Enum):
     RANK_LINK = "rank_link"
     REMATCH_FORM = "rematch_form"
     LOAD_PERSISTENT_VIEW = "load_persistent_view"
+    SET_LOG_CHANNEL = "set_log_channel"
 
 
 class RankLinkEnum(IntEnum):

@@ -68,6 +68,7 @@ class RematchItaliaBot(Bot):
         self.cogs_ready = Ready()
         self.__ready__ = False
         self.owner_ids = OWNER_IDS
+        self.owner_id = OWNER_IDS[0] if OWNER_IDS else None
         self.before_invoke(self._inject_log_channel)
         self.after_invoke(self._auto_log)
         self.auto_sync_commands = True  # Automatically sync commands on startup

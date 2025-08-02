@@ -1,4 +1,4 @@
-__version__ = "0.1.1-alfa1a"
+__version__ = "0.1.1-alfa2a"
 __author__ = "Tvrsier"
 __maintainer__ = "Tvrsier"
 __developers__ = [("Tvrsier", "github.com/Tvrsier")]

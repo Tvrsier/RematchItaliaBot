@@ -107,7 +107,10 @@ class Manager(commands.Cog):
         description="Imposta il canale di log per i comandi.",
         guild_ids=[996755561829912586]
     )
-    @commands.has_guild_permissions(administrator=True)
+    @commands.check_any(
+        commands.has_guild_permissions(administrator=True),
+        require_role(CommandEnum.SET_LOG_CHANNEL)
+    )
     @commands.guild_only()
     async def log_channel(
             self,
