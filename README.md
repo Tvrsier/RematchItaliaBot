@@ -2,7 +2,7 @@
 
 RematchItaliaBot is a Python-based application designed to manage and track rematch events, likely for a gaming or community platform. It features database integration, logging, and modular components for extensibility.
 
-![Python Version](https://img.shields.io/badge/python-3.8--3.12-blue?logo=python)
+<p align="center"><img src="https://img.shields.io/badge/python-3.8%7C3.9%7C3.10%7C3.11%7C3.12-blue" alt="shields"></p>
 
 ## Features ✨
 - 🧩 Modular bot architecture (cogs, checks, views)

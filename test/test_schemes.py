@@ -149,6 +149,7 @@ class TestSchemes(unittest.IsolatedAsyncioTestCase):
             rematch_display_name="RecentUser"
         )
 
+
         # Only the old one should be returned
         links = await get_platform_to_update()
         platform_ids = [link.platform_id for link in links]

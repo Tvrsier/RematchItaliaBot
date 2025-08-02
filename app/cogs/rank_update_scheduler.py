@@ -178,3 +178,4 @@ def setup(bot: "RematchItaliaBot"):
     It adds the RankUpdateScheduler cog to the bot.
     """
     bot.add_cog(RankUpdateScheduler(bot))
+    logger.debug("RankUpdateScheduler cog has been loaded.")
