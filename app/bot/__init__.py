@@ -53,7 +53,7 @@ class Ready:
 
 class RematchItaliaBot(Bot):
     def __init__(self):
-        intents = Intents.default() | Intents.message_content | Intents.members
+        intents = Intents.default() | Intents.message_content | Intents.members | Intents.presences | Intents.guilds
 
         super().__init__(
             command_prefix=prefix,
@@ -107,8 +107,6 @@ class RematchItaliaBot(Bot):
     async def on_connect(self):
         await self.db.connect()
         logger.info("Connected to the database.")
-        if self.auto_sync_commands:
-            await self.sync_commands()
         logger.info(f"Bot {self.user} connected to Discord.")
 
     async def on_ready(self):
@@ -121,6 +119,9 @@ class RematchItaliaBot(Bot):
         self.memory_monitor()
         await self.change_presence(activity=Activity(type=ActivityType.watching,
                                                      name=f"{len(self.users)} users |"))
+        logger.debug("Syncing commands . . .")
+        guild_ids = [guild.id for guild in self.guilds]
+        await self.sync_commands(guild_ids=guild_ids)
 
     async def get_context(self, message, *, cls=Context):
         """Override to inject log channel into context."""
@@ -254,10 +255,8 @@ class RematchItaliaBot(Bot):
         process = psutil.Process(os.getpid())
         memory_info = process.memory_info()
         cpu_pct = process.cpu_percent(interval=1.0)
-        logger.info(f"Memory usage: RSS={memory_info.rss / (1024 * 1024):.2f} MB, "
-                    f"VMS={memory_info.vms / (1024 * 1024):.2f} MB"
-                    f", CPU usage: {cpu_pct}%")
-        asyncio.get_event_loop().call_later(5, self.memory_monitor)
-
-
-  # Schedule next
+        mb_rss = memory_info.rss / (1024 * 1024)
+        mb_vms = memory_info.vms / (1024 * 1024)
+        if mb_rss > 500 or mb_vms > 1000 or cpu_pct > 50:
+            logger.warning(f"High memory usage detected: RSS={mb_rss:.2f} MB, VMS={mb_vms:.2f} MB, CPU usage: {cpu_pct}%")
+        asyncio.get_event_loop().call_later(20, self.memory_monitor)

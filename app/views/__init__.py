@@ -29,11 +29,23 @@ class RoleDropdown(Select):
         self.mapping = mapping
 
         rank = ranks[current]
-        options = [
-                      discord.SelectOption(label=r.name, value=str(r.id))
-                      for r in guild.roles
-                      if not r.is_default()
-                  ][:25] or [discord.SelectOption(label="⛔ nessun ruolo", value="none")]
+        roles = []
+        for r in guild.roles:
+            if r.is_default():
+                continue
+            if any(r.name.lower() == rank_.name.lower() for rank_ in ranks):
+                roles.append(r)
+        if roles:
+            options = [
+                discord.SelectOption(label=r.name, value=str(r.id))
+                for r in roles
+            ][:25] or [discord.SelectOption(label="⛔ nessun ruolo", value="none")]
+        else:
+            options = [
+                discord.SelectOption(label=r.name, value=str(r.id))
+                for r in guild.roles
+                if not r.is_default()
+            ][:25] or [discord.SelectOption(label="⛔ nessun ruolo", value="none")]
 
         super().__init__(
             placeholder=f"Scegli il ruolo per {rank.name}",
@@ -143,34 +155,35 @@ class RematchLinkForm(Modal):
     async def callback(self, interaction: discord.Interaction):
         nickname = self.children[0].value.strip()
         platform = self.children[1].value.strip().lower()
+        await interaction.response.defer(ephemeral=True)
 
         if not nickname or not platform:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "❌ Devi compilare tutti i campi del form.",
                 ephemeral=True
             )
             return
 
         if platform not in ["steam", "playstation", "xbox"]:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "❌ Piattaforma non valida. Inserisci `Steam`, `Playstation` o `Xbox`.",
                 ephemeral=True
             )
             return
         try:
             profile: ProfileResponse
-            profile,  created = await get_platform_link(interaction.user, identifier=nickname,
+            profile, created = await get_platform_link(interaction.user, identifier=nickname,
                                                         platform=PlatformEnum(platform))
             if profile is None:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Non è stato possibile trovare il tuo profilo di Rematch. "
-                    "Assicurati che il nickname sia e di aver scelto la piattaforma corretta."
+                    "Assicurati che il nickname sia corretto e di aver scelto la piattaforma corretta."
                     "Ti ricordo che se giochi da Steam devi inserire il tuo steam id o il link del profilo.",
                     ephemeral=True
                 )
                 return
             if not created:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "❌ Il tuo profilo è già collegato a Rematch.",
                     ephemeral=True
                 )
@@ -180,13 +193,13 @@ class RematchLinkForm(Modal):
             await self.bot.update_member_rank(interaction.user, rank)
         except Exception as e:
             logger.error(f"Error updating member rank: {e}", exc_info=True)
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 "❌ Si è verificato un errore durante l'inserimento del tuo profilo. "
                 "Per favore, riprova più tardi.",
                 ephemeral=True
             )
             return
-        await interaction.response.send_message(
+        await interaction.followup.send(
             "✅ Il tuo profilo è stato collegato correttamente!\n",
             ephemeral=True
         )
@@ -206,15 +219,15 @@ class OpenFormView(View):
 
 
 
-async def get_platform_link(member: Member, identifier: str, platform: PlatformEnum) -> Tuple[ProfileResponse, bool] | None:
+async def get_platform_link(member: Member, identifier: str, platform: PlatformEnum) -> Tuple[ProfileResponse, bool] | Tuple[None, None]:
     profile: ProfileResponse = await resolve_rematch_id(platform=platform, identifier=identifier)
     if profile is None:
         logger.warning("Failed to resolve Rematch ID for %s on platform %s", identifier, platform.value)
-        return None
+        return None, None
     platform_link, created = await create_platform_link(member=member, profile=profile)
     if platform_link is None:
         logger.warning("There was a problem saving player information")
-        return None
+        return None, None
     logger.debug("Platform link created: %s", platform_link)
     return profile, created
 

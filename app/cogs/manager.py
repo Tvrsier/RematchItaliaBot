@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 
+import discord
 from discord import OptionChoice
 from discord import SlashCommandGroup, Option, Role, slash_command, TextChannel, Colour, Embed
 from discord.ext import commands
@@ -29,20 +30,21 @@ class Manager(commands.Cog):
     perms = SlashCommandGroup(
         name="perm",
         description="Gestione dei permessi per i comandi.",
-        guild_ids=[996755561829912586]
     )
 
     rank = SlashCommandGroup(
         name="rank",
         description="Gestione del rank system.",
-        guild_ids=[996755561829912586]
     )
 
     @perms.command(
         name="add",
         description="Aggiungi un permesso per un comando specifico.",
     )
-    @commands.has_guild_permissions(administrator=True)
+    @commands.check_any(
+        commands.has_guild_permissions(administrator=True),
+        commands.is_owner()
+    )
     @commands.guild_only()
     async def add_permission(
             self,
@@ -74,7 +76,10 @@ class Manager(commands.Cog):
         name="remove",
         description="Rimuovi un permesso per un comando specifico.",
     )
-    @commands.has_guild_permissions(administrator=True)
+    @commands.check_any(
+        commands.has_guild_permissions(administrator=True),
+        commands.is_owner()
+    )
     @commands.guild_only()
     async def remove_permission(
             self,
@@ -107,8 +112,9 @@ class Manager(commands.Cog):
         description="Imposta il canale di log per i comandi.",
     )
     @commands.check_any(
-        commands.has_guild_permissions(administrator=True),
-        require_role(CommandEnum.SET_LOG_CHANNEL)
+         commands.has_guild_permissions(administrator=True),
+         require_role(CommandEnum.SET_LOG_CHANNEL),
+        commands.is_owner()
     )
     @commands.guild_only()
     async def log_channel(
@@ -133,7 +139,8 @@ class Manager(commands.Cog):
     @commands.guild_only()
     @commands.check_any(
         commands.has_guild_permissions(administrator=True),
-        require_role(CommandEnum.RANK_LINK)
+        require_role(CommandEnum.RANK_LINK),
+        commands.is_owner()
     )
     async def link_rank(
             self,
@@ -162,7 +169,8 @@ class Manager(commands.Cog):
             await actx.respond(
                 content=None,
                 view=view,
-                embed=embed
+                embed=embed,
+                ephemeral=True
             )
             return
         if (rank is None) ^ (role is None):
@@ -183,12 +191,12 @@ class Manager(commands.Cog):
     @slash_command(
         name="rematch_form",
         description="Imposta il modulo di link account Rematch.",
-        guild_ids=[996755561829912586]
     )
     @commands.guild_only()
     @commands.check_any(
         commands.has_guild_permissions(administrator=True),
-        require_role(CommandEnum.REMATCH_FORM)
+        require_role(CommandEnum.REMATCH_FORM),
+        commands.is_owner()
     )
     async def setup_form(
             self,
@@ -234,12 +242,12 @@ class Manager(commands.Cog):
         name="load_persistent_view",
         description="Carica una vista persistente (NOTA! da usare solo se la vista non è stata "
                     "caricata automaticamente).",
-        guild_ids=[996755561829912586]
     )
     @commands.guild_only()
     @commands.check_any(
         commands.has_guild_permissions(administrator=True),
-        require_role(CommandEnum.LOAD_PERSISTENT_VIEW)
+        require_role(CommandEnum.LOAD_PERSISTENT_VIEW),
+        commands.is_owner()
     )
     async def load_persistent_view(self,
                                    actx: ApplicationContext,

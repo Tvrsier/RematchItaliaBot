@@ -168,16 +168,21 @@ async def link_rank(guild: Guild, role: Role, rank: RankLinkEnum) -> tuple[Rank 
     rank_link, created = await Rank.get_or_create(
         guild_id=db_guild,
         name=rank.name,
-        role_id = role.id,
         defaults={
+            "role_id": role.id,
             "rank_position": rank.value,
             "updated_at": datetime.datetime.now(datetime.UTC)
         }
     )
     if not created:
-        if rank_link.role_id != role.id or rank_link.rank_position != rank.value:
+        updated = False
+        if rank_link.role_id != role.id:
             rank_link.role_id = role.id
+            updated = True
+        if rank_link.rank_position != rank.value:
             rank_link.rank_position = rank.value
+            updated = True
+        if updated:
             rank_link.updated_at = datetime.datetime.now(datetime.UTC)
             await rank_link.save()
     return rank_link, created

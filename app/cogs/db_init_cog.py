@@ -66,7 +66,7 @@ class DBInitCog(commands.Cog):
         logger.debug(f"Guild {guild.name}: cache={cached} / total={total}")
 
         fetch_members = self.check_fetch_members(cached, total)
-
+        await self.bot.sync_commands(guild_ids=[guild.id])
         await self.register_guild(guild, fetch_members)
 
     @commands.Cog.listener()

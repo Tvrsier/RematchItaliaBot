@@ -129,8 +129,8 @@ async def get_rematch_profile(
                     )
                     return None
         except aiohttp.ClientError as e:
-            logger.error(f"HTTP error in get_rematch_profile: {e}", exception=e, exc_info=True)
+            logger.error(f"HTTP error in get_rematch_profile: {e}", exc_info=True, stack_info=True)
             return None
         except Exception as e:
-            logger.error(f"Unexpected error in get_rematch_profile: {e}", exception=e, exc_info=True)
+            logger.error(f"Unexpected error in get_rematch_profile: {e}", exc_info=True, stack_info=True)
             return None
