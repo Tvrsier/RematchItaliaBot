@@ -188,9 +188,10 @@ class RematchLinkForm(Modal):
                     ephemeral=True
                 )
                 return
+
             rank = RankLinkEnum(profile["rank"]["current_league"])
 
-            await self.bot.update_member_rank(interaction.user, rank)
+            await self.bot.update_member_rank(interaction.user, rank, platform_id = nickname, platform=platform)
         except Exception as e:
             logger.error(f"Error updating member rank: {e}", exc_info=True)
             await interaction.followup.send(
