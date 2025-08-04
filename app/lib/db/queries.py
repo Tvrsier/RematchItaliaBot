@@ -302,12 +302,12 @@ async def update_rank(
 
 async def get_platform_to_update() -> list[PlatformLink]:
     """
-    Retrieves a list of platform links where their last checked time is older than 15 minutes.
+    Retrieves a list of platform links where their last checked time is older than 45 minutes.
     :return:
     """
-    #thirteen_minutes_ago = datetime.datetime.now(datetime.UTC) - datetime.timedelta(minutes=30)
-    #platform_links = await PlatformLink.filter(last_checked__lt=thirteen_minutes_ago).all()
-    platform_links = await PlatformLink.all()
+    delay = datetime.datetime.now(datetime.UTC) - datetime.timedelta(minutes=45)
+    platform_links = await PlatformLink.filter(last_checked__lt=delay).all()
+    #platform_links = await PlatformLink.all()
     if not platform_links:
         logger.info("No platform links found that need updating.")
         return []
