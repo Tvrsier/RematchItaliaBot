@@ -6,9 +6,9 @@ from discord.ui import View, Select, Button, button, Modal
 
 from app.lib.db.schemes import RankLinkEnum
 from app.logger import logger
-from lib.db.queries import link_rank, create_platform_link, get_role
-from lib.db.schemes import PlatformEnum
-from rematch_tracker import ProfilePlayer, ProfileResponse, resolve_rematch_id
+from app.lib.db.queries import link_rank, create_platform_link
+from app.lib.db.schemes import PlatformEnum
+from app.rematch_tracker import ProfileResponse, resolve_rematch_id
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:

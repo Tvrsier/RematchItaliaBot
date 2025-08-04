@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING
 
-import discord
 from discord import OptionChoice
 from discord import SlashCommandGroup, Option, Role, slash_command, TextChannel, Colour, Embed
 from discord.ext import commands
@@ -11,9 +10,9 @@ from app.lib.db.schemes import RankLinkEnum
 from app.lib.extension_context import RematchApplicationContext as ApplicationContext
 from app.logger import logger
 from app.views import RankLinkView
-from lib.db.queries import link_rank, create_persistent_view
-from lib.db.schemes import PersistentViewEnum
-from views import OpenFormView
+from app.lib.db.queries import link_rank, create_persistent_view
+from app.lib.db.schemes import PersistentViewEnum
+from app.views import OpenFormView
 
 if TYPE_CHECKING:
     from app.bot import RematchItaliaBot

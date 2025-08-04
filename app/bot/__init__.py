@@ -16,8 +16,8 @@ from app.lib.db.schemes import GuildSchema, PersistentViewEnum
 from app.lib.extension_context import RematchContext as Context, RematchApplicationContext as ApplicationContext
 from app.logger import logger
 from app.views import OpenFormView
-from lib.db.queries import get_guild
-from lib.db.schemes import RankLinkEnum
+from app.lib.db.queries import get_guild
+from app.lib.db.schemes import RankLinkEnum
 
 COGS_PATH = Path("./app/cogs")
 if not COGS_PATH.exists():

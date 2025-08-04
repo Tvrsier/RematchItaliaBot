@@ -6,7 +6,7 @@ import os
 
 from app.lib.db.schemes import PlatformEnum
 from app.rematch_tracker.structures import ResolveResponse
-from rematch_tracker.structures import ProfileResponse, ProfilePlayer, ProfileRank
+from app.rematch_tracker.structures import ProfileResponse, ProfilePlayer, ProfileRank
 
 RESOLVE_URL = os.getenv("RESOLVE_URL", None)
 PROFILE_URL = os.getenv("PROFILE_URL", None)

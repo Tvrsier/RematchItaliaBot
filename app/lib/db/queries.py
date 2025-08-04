@@ -4,7 +4,7 @@ from discord import Role, Guild, Member, TextChannel, Message
 
 from app.lib.db.schemes import *
 from app.logger import logger
-from rematch_tracker import ProfileResponse
+from app.rematch_tracker import ProfileResponse
 
 
 async def add_or_get_guild(guild: Guild) -> tuple[GuildSchema, bool]:
