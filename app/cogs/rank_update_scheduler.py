@@ -145,9 +145,15 @@ class RankUpdateScheduler(Cog):
 
         logger.info("Running rank update scheduler...")
         platform_links = await get_platform_to_update()
+        if not platform_links or platform_links is None:
+            logger.info("No platform links to update ranks for.")
+            return
         logger.debug(f"Checking ranks of {len(platform_links)} members...")
 
         to_update = await self._fetch_rematch_profile(platform_links)
+        if not to_update:
+            logger.info("No ranks to update.")
+            return
         del platform_links
         discord_ids = list(to_update.keys())
         users = await self._fetch_users(discord_ids)

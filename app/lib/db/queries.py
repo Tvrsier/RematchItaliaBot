@@ -312,6 +312,10 @@ async def get_platform_to_update() -> list[PlatformLink]:
         logger.info("No platform links found that need updating.")
         return []
     logger.info(f"Found {len(platform_links)} platform links that need updating.")
+    # update the last checked time to now
+    for link in platform_links:
+        link.last_checked = datetime.datetime.now(datetime.UTC)
+        await link.save()
     return platform_links
 
 
