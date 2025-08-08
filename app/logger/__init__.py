@@ -13,6 +13,9 @@ class ClassNameFilter(logging.Filter):
         cwd = os.getcwd()
         abs_path = os.path.abspath(record.pathname)
         rel_path = os.path.relpath(abs_path, cwd)
+        app_index = rel_path.find("app" + os.sep)
+        if app_index != -1:
+            rel_path = rel_path[app_index + len("app" + os.sep):]
         if rel_path.endswith(".py"):
             rel_path = rel_path[:-3]
         record.relpath = rel_path.replace("\\", ".")  # For Windows paths

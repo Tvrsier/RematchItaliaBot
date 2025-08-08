@@ -18,7 +18,7 @@ from app.logger import logger
 from app.views import OpenFormView
 from app.lib.db.queries import get_guild
 from app.lib.db.schemes import RankLinkEnum
-from lib.db.schemes import PlatformEnum
+from app.lib.db.schemes import PlatformEnum
 
 COGS_PATH = Path("./app/cogs")
 if not COGS_PATH.exists():
@@ -206,8 +206,8 @@ class RematchItaliaBot(Bot):
         self.add_view(view=PERSISTENT_VIEW_DICT.get(view_name)(bot=self, timeout=None), message_id=message_id)
 
     # noinspection PyMethodMayBeStatic
-    async def update_member_rank(self, member: Member, new_rank: RankLinkEnum, platform_id: str | None,
-                                 platform: PlatformEnum | None) -> None:
+    async def update_member_rank(self, member: Member, new_rank: RankLinkEnum, platform_id: str | None = None,
+                                 platform: PlatformEnum | None = None) -> None:
         guild = member.guild
         new_role: Role | None = None
         rank_to_role_id = {}
