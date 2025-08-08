@@ -10,6 +10,7 @@ RematchItaliaBot is a Python-based application designed to manage and track rema
 - 📋 Logging system
 - 🔁 Rematch tracking and management
 - 🛡️ Error handling
+- 📦 Build packaging with PEX for deployment
 
 ## Project Structure 🗂️
 ```
@@ -75,11 +76,11 @@ The `RematchItaliaBot` class is the core of the application, and several parts m
 
 These mechanisms provide robustness, modularity, and maintainability, but may require careful reading for those unfamiliar with advanced Discord.py patterns or asynchronous Python.
 
-### Deep Dive: Critical Parts of the `RematchItaliaBot` Class with Code Examples 🧩
+## Deep Dive: Critical Parts of the `RematchItaliaBot` Class with Code Examples 🧩
 
 Below are the most important mechanisms of the `RematchItaliaBot` class, with direct code excerpts and explanations to help you understand how each part works:
 
-#### 1. Database Integration
+### 1. Database Integration
 ```python
 # In __init__
 self.db = DatabaseManager("sqlite://data/rematch_italia.db", models)
@@ -93,7 +94,7 @@ async def on_connect(self):
 ```
 - The bot uses a `DatabaseManager` for persistent storage. The connection is established asynchronously when the bot connects to Discord.
 
-#### 2. Dynamic Cog Loading
+### 2. Dynamic Cog Loading
 ```python
 def setup_cogs(self):
     if COGS is not None and len(COGS) != 0:
@@ -119,7 +120,7 @@ def setup_cogs(self):
 ```
 - This method loads all bot extensions (cogs) dynamically and tracks their readiness, handling errors gracefully.
 
-#### 3. Persistent Views Restoration
+### 3. Persistent Views Restoration
 ```python
 async def load_persistent_views(self):
     """Load persistent views from the database."""
@@ -127,7 +128,7 @@ async def load_persistent_views(self):
 ```
 - Ensures Discord UI components (views) are restored after a bot restart.
 
-#### 4. Context and Logging Injection
+### 4. Context and Logging Injection
 ```python
 async def _inject_log_channel(self, ctx: Context | ApplicationContext) -> None:
     if ctx.guild:
@@ -144,7 +145,7 @@ async def _auto_log(self, ctx: Context | ApplicationContext) -> None:
 ```
 - These methods inject a log channel into every command context and automatically log command usage.
 
-#### 5. Event Synchronization
+### 5. Event Synchronization
 ```python
 async def on_ready(self):
     if not self.__ready__:
@@ -271,6 +272,59 @@ You can then use the returned ORM model instances to access or update fields, an
    ```bash
    python launcher.py
    ```
+
+## Building & Running with PEX 📦
+
+The project supports packaging into a single executable `.pex` file using [PEX](https://github.com/pantsbuild/pex).  
+This allows you to deploy the bot as a standalone file without requiring a separate Python environment on the target machine.
+
+### 1. Install PEX in a Virtual Environment
+```bash
+python3 -m venv .pexenv
+source .pexenv/bin/activate
+pip install --upgrade pip
+pip install "pex>=2.1"
+```
+
+### 2. Build the PEX Package
+Use the provided `make_build.sh` script:
+```bash
+./make_build.sh <version>
+# Example:
+./make_build.sh 0.1.5
+```
+The build output will be located in:
+```
+build/<version>/
+  rematch_bot-<version>.pex
+  .env
+  data/
+```
+
+### 3. Run the PEX
+You can run the generated `.pex` file in two ways:
+```bash
+# Option 1: execute directly
+chmod +x build/0.1.5/rematch_bot-0.1.5.pex
+./build/0.1.5/rematch_bot-0.1.5.pex
+
+# Option 2: run with Python
+python3 build/0.1.5/rematch_bot-0.1.5.pex
+```
+
+### 4. What’s Included in the PEX
+- All application code from the `app/` directory
+- `launcher.py` and `info.py`
+- All dependencies from `requirements.txt`
+
+Environment files (`.env`) and external data directories are copied alongside the `.pex` so they can be edited without rebuilding.
+
+### 5. Inspecting a PEX
+Since a `.pex` is a self-contained ZIP archive, you can inspect its contents:
+```bash
+unzip -l build/0.1.5/rematch_bot-0.1.5.pex
+```
+or open it in any archive manager or IDE that supports ZIP (e.g., IntelliJ/PyCharm).
 
 ## Testing 🧪
 Run unit tests with:
