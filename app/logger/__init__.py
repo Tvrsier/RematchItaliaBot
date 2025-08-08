@@ -17,10 +17,10 @@ class ClassNameFilter(logging.Filter):
         if app_index != -1:
             relpath = rel_path[app_index + len("app" + os.sep):]
         else:
-            relpath = rel_path.replace("\\", ".")
+            relpath = rel_path.replace(os.sep, ".")
         if relpath.endswith(".py"):
             relpath = rel_path[:-3]
-        record.relpath =  relpath.replace("\\", ".")  # For Windows paths
+        record.relpath =  relpath.replace(os.sep, ".")  # For Windows paths
         # Existing classname logic
         record.classname = ""
         frame = inspect.currentframe()

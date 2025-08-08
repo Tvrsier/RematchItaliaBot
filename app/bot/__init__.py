@@ -1,10 +1,10 @@
 import asyncio
 import datetime
 import os
+import pkgutil
 import sys
 import traceback
 import psutil
-from pathlib import Path
 
 from discord import Intents, NoEntryPointError, ExtensionFailed, Activity, ActivityType, Interaction, Message, Member, \
     TextChannel, Embed, Role, Colour
@@ -20,13 +20,22 @@ from app.lib.db.queries import get_guild
 from app.lib.db.schemes import RankLinkEnum
 from app.lib.db.schemes import PlatformEnum
 
-COGS_PATH = Path("./app/cogs")
-if not COGS_PATH.exists():
-    COGS_PATH.mkdir(parents=True, exist_ok=True)
+def discover_cogs():
+    try:
+        import app.cogs as cogs_pkg
+        names = [
+            name for _, name, ispkg in pkgutil.iter_modules(cogs_pkg.__path__)
+            if not ispkg and not name.startswith("_")
+        ]
+        if names:
+            return names
+    except Exception as e:
+        logger.error("Failed to discover cogs: %s", e, exc_info=True)
+        raise RuntimeError("Failed to discover cogs. Please check your cogs directory.") from e
 
 prefix = "rmi&"
 OWNER_IDS = [int(x) for x in os.getenv("OWNER_IDS", "").split(",") if x]
-COGS = [p.stem for p in COGS_PATH.glob("*.py")]
+COGS = discover_cogs()
 
 PERSISTENT_VIEW_DICT = {
     PersistentViewEnum.REMATCH_FORM: OpenFormView,
