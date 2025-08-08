@@ -10,18 +10,25 @@ LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 class ClassNameFilter(logging.Filter):
     def filter(self, record):
-        cwd = os.getcwd()
         abs_path = os.path.abspath(record.pathname)
-        rel_path = os.path.relpath(abs_path, cwd)
-        app_index = rel_path.find("app" + os.sep)
-        if app_index != -1:
-            relpath = rel_path[app_index + len("app" + os.sep):]
+        # normalizza gli slash così funziona su zip/pex, linux e windows
+        norm = abs_path.replace("\\", "/")
+
+        # prova a tagliare a partire da "app/"
+        idx = norm.rfind("/app/")
+        if idx != -1:
+            rel = norm[idx + len("/app/"):]
         else:
-            relpath = rel_path.replace(os.sep, ".")
-        if relpath.endswith(".py"):
-            relpath = rel_path[:-3]
-        record.relpath =  relpath.replace(os.sep, ".")  # For Windows paths
-        # Existing classname logic
+            # fallback: solo il filename
+            rel = os.path.basename(norm)
+
+        if rel.endswith(".py"):
+            rel = rel[:-3]
+
+        # per sicurezza, converti in notazione a punti
+        record.relpath = rel.replace("/", ".")
+
+        # --- classe chiamante (come già facevi) ---
         record.classname = ""
         frame = inspect.currentframe()
         while frame:
@@ -33,7 +40,6 @@ class ClassNameFilter(logging.Filter):
                     break
             frame = frame.f_back
         return True
-
 
 class SmartClassFormatter(logging.Formatter):
     def format(self, record):
