@@ -61,7 +61,7 @@ async def add_or_get_guild_member(member: Member) -> GuildMemberSchema | None:
                 guild_member.joined_at = member.joined_at or None
                 await guild_member.save()
         return guild_member
-    logger.warn(f"Guild not found for member {member.name}")
+    logger.warning(f"Guild not found for member {member.name}")
     return None
 
 
