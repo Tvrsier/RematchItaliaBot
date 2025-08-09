@@ -10,7 +10,7 @@ from discord.ext.commands import CooldownMapping
 
 from app.logger import logger
 from app.lib.extension_context import RematchApplicationContext as ApplicationContext
-from lib.db import queries
+from app.lib.db import queries
 
 if TYPE_CHECKING:
     from app.bot import RematchItaliaBot
