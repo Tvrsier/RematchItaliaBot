@@ -165,7 +165,12 @@ class RankUpdateScheduler(Cog):
                         except Exception as e:
                             logger.error(f"Failed to fetch member {user.id} in guild {guild.id}: {e}", exc_info=True)
                             continue
-                    await self.bot.update_member_rank(member, rank)
+                    try:
+                        await self.bot.update_member_rank(member, rank)
+                    except Exception as e:
+                        logger.error(f"Failed to update member rank for user {user.id} in guild {guild.id}: {e}",
+                                     exc_info=True)
+                        continue
                     await update_rank(member, rank)
                     logger.debug(f"Updated rank for user {user.id} in guild {guild.id}.")
                 except Exception as e:
