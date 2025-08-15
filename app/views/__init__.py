@@ -157,12 +157,16 @@ class RematchLinkForm(Modal):
         platform = self.children[1].value.strip().lower()
         await interaction.response.defer(ephemeral=True)
 
+        if interaction.channel:
+            await interaction.channel.trigger_typing()
+
         if not nickname or not platform:
             await interaction.followup.send(
                 "❌ Devi compilare tutti i campi del form.",
                 ephemeral=True
             )
             return
+
 
         if platform not in ["steam", "playstation", "xbox"]:
             await interaction.followup.send(

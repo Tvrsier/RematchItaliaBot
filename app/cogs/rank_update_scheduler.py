@@ -1,4 +1,7 @@
+import asyncio
+import datetime
 import os
+import time
 from typing import TYPE_CHECKING
 
 from discord import Cog, User, Guild
@@ -13,6 +16,9 @@ RANK_UPDATE_SCHEDULER_INTERVAL = int(os.getenv("RANK_UPDATE_SCHEDULER_INTERVAL",
 
 if TYPE_CHECKING:
     from app.bot import RematchItaliaBot
+
+last_rematch_fail: float | None = None
+rematch_fail_cooldown = 300
 
 class RankUpdateScheduler(Cog):
     """
@@ -50,29 +56,60 @@ class RankUpdateScheduler(Cog):
         :param platform_links:
         :return: A list of PlatformLink that has to be updated
         """
+        global last_rematch_fail
+
+        # Se siamo in cooldown, saltiamo la chiamata
+        if last_rematch_fail and (time.time() - last_rematch_fail) < rematch_fail_cooldown:
+            remaining = int(rematch_fail_cooldown - (time.time() - last_rematch_fail))
+            logger.warning(f"Skipping Rematch profile fetch due to recent failures (cooldown {remaining}s).")
+            return None
+
         ret = {}
         logger.info(f"Fetching Rematch profiles for {len(platform_links)} members...")
         original_links = platform_links.copy()
-        for link in platform_links:
-            platform = link.platform.value if link.platform != PlatformEnum.PSN else "psn"
-            platform_id = link.platform_id
-            try:
-                profile: ProfileResponse = await get_rematch_profile(platform=platform, platform_id=platform_id)
-                if profile is None:
-                    logger.warning(f"Failed to fetch Rematch profile for {platform}/{platform_id}")
+
+        try:
+            for link in platform_links:
+                platform = link.platform.value if link.platform != PlatformEnum.PSN else "psn"
+                platform_id = link.platform_id
+
+                try:
+                    profile: ProfileResponse = await get_rematch_profile(
+                        platform=platform,
+                        platform_id=platform_id
+                    )
+                    if profile is None:
+                        logger.warning(f"Failed to fetch Rematch profile for {platform}/{platform_id}")
+                        continue
+
+                    rank = RankLinkEnum(profile["rank"]["current_league"])
+                    if rank != link.cached_rank:
+                        ret[link.discord_id_id] = rank
+                        logger.debug(f"Rank set for update for {link.discord_id_id}: {rank}")
+                    else:
+                        original_links.remove(link)
+
+                except asyncio.TimeoutError:
+                    last_rematch_fail = time.time()
+                    logger.error(f"Timeout fetching Rematch profile for {platform}/{platform_id}")
                     continue
-                rank = RankLinkEnum(profile["rank"]["current_league"])
-                if rank != link.cached_rank:
-                    ret[link.discord_id_id] = rank
-                    logger.debug(f"Rank set for update for {link.discord_id_id}: {rank}")
-                else:
-                    original_links.remove(link)
-            except Exception as e:
-                logger.error(f"Error fetching Rematch profile for {platform}/{platform_id}: {e}", exc_info=True)
-                continue
-        logger.info("Rematch profiles had been fetched.")
-        logger.debug(f"Ranks will be updated for {len(ret)}/{len(platform_links)} members.")
-        return ret
+                except Exception as e:
+                    last_rematch_fail = time.time()
+                    logger.error(f"Error fetching Rematch profile for {platform}/{platform_id}: {e}", exc_info=True)
+                    continue
+
+            # Se almeno una chiamata è andata a buon fine, resettiamo il cooldown
+            if ret:
+                last_rematch_fail = None
+
+            logger.info("Rematch profiles fetch completed.")
+            logger.debug(f"Ranks will be updated for {len(ret)}/{len(platform_links)} members.")
+            return ret
+
+        except Exception as e:
+            last_rematch_fail = time.time()
+            logger.error(f"Fatal error during Rematch profiles fetch: {e}", exc_info=True)
+            return None
 
     # noinspection PyMethodMayBeStatic
     async def _get_mutual_guilds(self, users: list[User]) -> dict[User, list[Guild]]:
@@ -140,6 +177,12 @@ class RankUpdateScheduler(Cog):
         This method runs periodically to update ranks for members.
         It checks if the bot is ready and then calls the update method.
         """
+
+        now = datetime.datetime.now(datetime.timezone.utc)
+        if 0 <= now.hour < 6:
+            logger.info("Scheduler is paused due to time lock (00:00 - 06:00 UTC).")
+            return
+
         if not self.bot.__ready__:
             return
 

@@ -337,4 +337,3 @@ python -m unittest discover test
 This project is licensed under the MIT License.
 
 ---
-*Feel free to update this README with more specific details about your project, usage, and configuration.*
