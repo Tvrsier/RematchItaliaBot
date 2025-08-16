@@ -13,6 +13,20 @@ from app.rematch_tracker import get_rematch_profile, ProfileResponse
 from app.lib.extension_context import RematchContext as Context
 
 RANK_UPDATE_SCHEDULER_INTERVAL = int(os.getenv("RANK_UPDATE_SCHEDULER_INTERVAL", "1800"))
+DOWNTIME_START = datetime.time(0, 0)
+DOWNTIME_END = datetime.time(6, 0)
+LOCK_LOGGED = False # Used to prevent multiple logs during downtime
+
+
+def is_downtime() -> bool:
+    """
+    Check if the current time is within the downtime period.
+    Downtime is defined as between 00:00 and 06:00 UTC.
+    :return: True if current time is within downtime, False otherwise.
+    """
+    now = datetime.datetime.now(datetime.timezone.utc)
+    t = now.time()
+    return DOWNTIME_START <= t < DOWNTIME_END
 
 if TYPE_CHECKING:
     from app.bot import RematchItaliaBot
@@ -182,14 +196,14 @@ class RankUpdateScheduler(Cog):
         This method runs periodically to update ranks for members.
         It checks if the bot is ready and then calls the update method.
         """
-
-        now = datetime.datetime.now(datetime.timezone.utc)
-        if 0 <= now.hour < 6:
-            logger.info("Scheduler is paused due to time lock (00:00 - 06:00 UTC).")
+        global LOCK_LOGGED
+        if is_downtime():
+            if not LOCK_LOGGED:
+                logger.warning("Rank update scheduler is in downtime. Skipping updates.")
+                LOCK_LOGGED = True
             return
 
-        if not self.bot.__ready__:
-            return
+        LOCK_LOGGED = False
 
         logger.info("Running rank update scheduler...")
         platform_links = await get_platform_to_update()

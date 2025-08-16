@@ -26,7 +26,7 @@ class ClassNameFilter(logging.Filter):
             rel = rel[:-3]
 
         # per sicurezza, converti in notazione a punti
-        record.relpath = rel.replace("/", ".")
+        record.relpath = "app." + rel.replace("/", ".")
 
         # --- classe chiamante (come già facevi) ---
         record.classname = ""
